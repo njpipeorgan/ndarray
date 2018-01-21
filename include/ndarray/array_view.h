@@ -274,7 +274,7 @@ public:
     void traverse(Function fn)
     {
         const size_t    size   = this->_total_size();
-        const ptrdiff_t stride = stride();
+        const ptrdiff_t stride = this->stride();
         for (size_t i = 0; i < size; ++i)
             fn(*(this->base_ptr_ + i * stride));
     }
