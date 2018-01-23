@@ -7,6 +7,179 @@
 namespace ndarray
 {
 
+template<typename SubView, bool IsExplicitConst>
+class _regular_view_iter
+{
+public:
+    using _my_type      = _regular_view_iter;
+    using _sub_view_t   = SubView;
+    using _elem_t       = typename _sub_view_t::_elem_t;
+    static constexpr bool _is_const_v = IsExplicitConst || std::is_const_v<_elem_t>;
+    using _ret_view_t   = std::conditional_t<_is_const_v, typename _sub_view_t::_my_const_t, _sub_view_t>;
+    using _base_ptr_t   = typename _ret_view_t::_base_ptr_t;
+    using _ptr_stride_t = size_t;
+    using _my_const_t   = _regular_view_iter<_sub_view_t, true>;
+
+public:
+    _ret_view_t   ret_view_;
+    _ptr_stride_t ptr_stride_;  // always positive
+
+public:
+    _regular_view_iter(_sub_view_t sub_view, _ptr_stride_t ptr_stride) : 
+        ret_view_{std::move(sub_view)}, ptr_stride_{ptr_stride} {}
+
+    // convert from lvalue non-const view iter to this type
+    _regular_view_iter(const _regular_view_iter<_sub_view_t, false>& other) : 
+        ret_view_{other.ret_view_}, ptr_stride_{other.ptr_stride_} {}
+
+    // convert from lvalue non-const view iter to this type
+    _regular_view_iter(_regular_view_iter<_sub_view_t, false>&& other) : 
+        ret_view_{std::move(other.ret_view_)}, ptr_stride_{other.ptr_stride_} {}
+
+    _base_ptr_t& my_base_ptr_ref()
+    {
+        return ret_view_._get_base_ptr_ref();
+    }
+
+    _my_type& operator+=(ptrdiff_t diff)
+    {
+        my_base_ptr_ref() += diff * ptr_stride_;
+        return *this;
+    }
+    _my_type& operator-=(ptrdiff_t diff)
+    {
+        my_base_ptr_ref() -= diff * ptr_stride_;
+        return *this;
+    }
+    _my_type operator+(ptrdiff_t diff) const
+    {
+        _my_type ret = *this;
+        ret += diff;
+        return ret;
+    }
+    _my_type operator-(ptrdiff_t diff) const
+    {
+        _my_type ret = *this;
+        ret -= diff;
+        return ret;
+    }
+    _my_type& operator++()
+    {
+        (*this) += 1;
+        return *this;
+    }
+    _my_type& operator--()
+    {
+        (*this) += 1;
+        return *this;
+    }
+    _my_type operator++(int)
+    {
+        _my_type ret = *this;
+        ++(*this);
+        return ret;
+    }
+    _my_type operator--(int)
+    {
+        _my_type ret = *this;
+        --(*this);
+        return ret;
+    }
+
+    const _ret_view_t& _dereference_to_cref() const
+    {
+        return ret_view;
+    }
+    _ret_view_t operator*() const
+    {
+        return ret_view;
+    }
+    _ret_view_t operator[](ptrdiff_t diff) const
+    {
+        return *((*this) + diff);
+    }
+    ptrdiff_t operator-(const _my_type& other) const
+    {
+        return (this->my_base_ptr_ref() - other.my_base_ptr_ref()) / ptr_stride_;
+    }
+
+    bool operator==(const _my_type& other) const
+    {
+        return this->my_base_ptr_ref() == other.my_base_ptr_ref();
+    }
+    bool operator!=(const _my_type& other) const
+    {
+        return !((*this) == other);
+    }
+    bool operator<(const _my_type& other) const
+    {
+        return this->my_base_ptr_ref() < other.my_base_ptr_ref();
+    }
+    bool operator>(const _my_type& other) const
+    {
+        return this->my_base_ptr_ref() > other.my_base_ptr_ref();
+    }
+    bool operator<=(const _my_type& other) const
+    {
+        return !((*this) > other);
+    }
+    bool operator>=(const _my_type& other) const
+    {
+        return !((*this) < other);
+    }
+
+};
+
+template<typename SubView, typename BaseView, bool IsExplicitConst>
+class _irregular_view_iter
+{
+public:
+    using _my_type      = _irregular_view_iter;
+    using _sub_view_t   = SubView;
+    using _base_view_t  = BaseView;
+    using _elem_t       = typename _sub_view_t::_elem_t;
+    static constexpr bool _is_const_v = IsExplicitConst || std::is_const_v<_elem_t>;
+    using _ret_view_t   = std::conditional_t<_is_const_v, typename _sub_view_t::_my_const_t, _sub_view_t>;
+    using _base_ptr_t   = typename _ret_view_t::_base_ptr_t;
+    using _ptr_stride_t = size_t;
+    static constexpr size_t _iter_depth_v = _base_view_t::_depth_v - _sub_view_t::_depth_v;
+    using _indices_t    = std::array<size_t, _iter_depth_v>;
+    using _my_const_t   = _irregular_view_iter<_sub_view_t, _base_view_t, true>;
+
+public:
+    const _base_view_t&  base_view_cref_; // reference to its base view
+    _ret_view_t          ret_view_;
+    _ptr_stride_t        ptr_stride_;     // always positive
+    _indices_t           indices_{};      // indices_ is always initialized to be an array of zeros
+
+public:
+    _irregular_view_iter(const _base_view_t& base_view_cref, _sub_view_t sub_view, _ptr_stride_t ptr_stride) : 
+        base_view_cref_{base_view_cref}, ret_view_{std::move(sub_view)}, ptr_stride_{ptr_stride} {}
+
+    // convert from lvalue non-const view iter to this type
+    _irregular_view_iter(const _irregular_view_iter<_sub_view_t, _base_view_t, false>& other) : 
+        base_view_cref_{other.base_view_cref_}, ret_view_{other.ret_view_}, 
+        ptr_stride_{other.ptr_stride_}, indices_{other.indices_} {}
+
+    // convert from rvalue non-const view iter to this type
+    _irregular_view_iter(_irregular_view_iter<_sub_view_t, _base_view_t, false>&& other) : 
+        base_view_cref_{other.base_view_cref_}, ret_view_{std::move(other.ret_view_)}, 
+        ptr_stride_{other.ptr_stride_}, indices_{std::move(other.indices_)} {}
+
+    _indices_t& _get_indices_ref()
+    {
+        return indices_;
+    }
+
+    template<size_t IterLevel>
+    size_t _index_dimension() const
+    {
+        static_assert(IterLevel < _iter_depth_v);
+        return base_view_cref_.dimension<IterLevel>();
+    }
+
+};
+
 //
 // Array view element iterator, iterates all elements in accessing order.
 //

@@ -130,7 +130,8 @@ auto _take_ith_span(SpanTuple&& spans)
 
 // collapse a span into a non-scalar indexer
 template<typename Indexer, typename Span>
-std::pair<size_t, _indexer_collapsing_t<Indexer, Span>> collapse_indexer(size_t base_size, Indexer&& indexer, Span&& span)
+std::pair<size_t, _indexer_collapsing_t<Indexer, Span>> collapse_indexer(
+    size_t base_size, Indexer&& indexer, Span&& span)
 {
     using derived_result = _indexer_collapsing<Indexer, Span>;
     static constexpr _span_type    span_v    = derived_result::span_v;
@@ -264,8 +265,8 @@ void get_collapsed_view_impl(size_t& base_offset, NewTuple& new_indexers, size_t
 // given a view by base_ptr, dims, and its original indexers, 
 // derive a new view by collapsing span specifications into non-scalar indexers
 template<typename T, typename IndexerTuple, typename SpanTuple>
-_derive_view_type_t<T, IndexerTuple, SpanTuple>
-get_collapsed_view(T* base_ptr, const size_t* dims, IndexerTuple&& indexers, SpanTuple&& spans)
+_derive_view_type_t<T, IndexerTuple, SpanTuple> get_collapsed_view(
+    T* base_ptr, const size_t* dims, IndexerTuple&& indexers, SpanTuple&& spans)
 {
     using derived_type = _derive_view_type<T, IndexerTuple, SpanTuple>;
     using view_t       = typename derived_type::type;

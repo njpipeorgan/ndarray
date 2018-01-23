@@ -35,6 +35,23 @@ enum class _view_type
     invalid    //not used
 };
 
+
+template<size_t N, typename ResultTuple = std::tuple<>>
+struct _n_all_indexer_tuple;
+template<size_t N, typename... Results>
+struct _n_all_indexer_tuple<N, std::tuple<Results...>>
+{
+    using type = typename _n_all_indexer_tuple<N - 1, std::tuple<Results..., _all_indexer>>::type;
+};
+template<typename... Results>
+struct _n_all_indexer_tuple<size_t(0), std::tuple<Results...>>
+{
+    using type = std::tuple<Results...>;
+};
+template<size_t N>
+using _n_all_indexer_tuple_t = typename _n_all_indexer_tuple<N>::type;
+
+
 template<typename Span>
 struct _classify_span_type
 {
@@ -130,21 +147,6 @@ struct _indexer_tuple_collapsing :
 template<typename IndexerTuple, typename SpanTuple>
 using _indexer_tuple_collapsing_t = typename _indexer_tuple_collapsing<IndexerTuple, SpanTuple>::type;
 
-
-template<size_t N, typename ResultTuple = std::tuple<>>
-struct _n_all_indexer_tuple;
-template<size_t N, typename... Results>
-struct _n_all_indexer_tuple<N, std::tuple<Results...>>
-{
-    using type = typename _n_all_indexer_tuple<N - 1, std::tuple<Results..., _all_indexer>>::type;
-};
-template<typename... Results>
-struct _n_all_indexer_tuple<size_t(0), std::tuple<Results...>>
-{
-    using type = std::tuple<Results...>;
-};
-template<size_t N>
-using _n_all_indexer_tuple_t = typename _n_all_indexer_tuple<N>::type;
 
 
 template<typename IndexerTuple, size_t N = std::tuple_size_v<IndexerTuple>>
@@ -245,5 +247,37 @@ struct _derive_view_type
 };
 template<typename T, typename IndexerTuple, typename SpanTuple>
 using _derive_view_type_t = typename _derive_view_type<T, IndexerTuple, SpanTuple>::type;
+
+
+template<size_t IterDepth, typename IndexerTuple, typename TakenTuple = std::tuple<>>
+struct _identify_view_iter_type;
+template<size_t IterDepth, typename I1, typename... Is, typename... Takens>
+struct _identify_view_iter_type<IterDepth, std::tuple<I1, Is...>, std::tuple<Takens...>> : 
+    _identify_view_iter_type<IterDepth - 1, std::tuple<Is...>, std::tuple<Takens..., I1>> {};
+template<typename I1, typename... Is, typename... Takens>
+struct _identify_view_iter_type<0, std::tuple<I1, Is...>, std::tuple<Takens...>>
+{
+    using iter_indexers_t = std::tuple<Takens..., _scalar_indexer /* acting as all remaining scalars */>;
+    static constexpr _view_type value = _identify_view_type_v<iter_indexers_t>;
+};
+template<size_t IterDepth, typename IndexerTuple>
+constexpr _view_type _identify_view_iter_type_v = _identify_view_iter_type<IterDepth, IndexerTuple>::value;
+
+template<size_t IterDepth, typename IndexerTuple, typename BaseView, typename SubView, bool IsExplicitConst>
+struct _derive_view_iter_type
+{
+    static constexpr _view_type view_iter_type_v = _identify_view_iter_type_v<IterDepth, IndexerTuple>;
+    using type = 
+        std::conditional_t<view_iter_type_v == _view_type::regular, 
+        _regular_view_iter<SubView, IsExplicitConst>, 
+        std::conditional_t<view_iter_type_v == _view_type::irregular, 
+        _irregular_view_iter<SubView, BaseView, IsExplicitConst>, 
+        void>>;
+};
+template<size_t IterDepth, typename IndexerTuple, typename BaseView, typename SubView, bool IsExplicitConst>
+using _derive_view_iter_type_t = typename _derive_view_iter_type<
+    IterDepth, IndexerTuple, BaseView, SubView, IsExplicitConst>::type;
+
+
 
 }

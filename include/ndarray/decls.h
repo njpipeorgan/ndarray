@@ -31,6 +31,11 @@ class regular_view;
 template<typename T, typename IndexerTuple>
 class irregular_view;
 
+template<typename SubView, bool IsExplicitConst>
+class _regular_view_iter;
+template<typename SubView, typename BaseView, bool IsExplicitConst>
+class _irregular_view_iter;
+
 template<typename T, bool IsExplicitConst = false>
 class _simple_elem_iter;
 template<typename T, bool IsExplicitConst = false>

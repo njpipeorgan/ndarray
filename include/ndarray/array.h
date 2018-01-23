@@ -122,14 +122,28 @@ public:
     auto part_view(Spans&&... spans)
     {
         return get_collapsed_view(
-            data(), dims_.data(), _n_all_indexer_tuple_t<_depth_v>{}, std::forward_as_tuple(spans...));
+            data(), dims_.data(), _n_all_indexer_tuple_t<_depth_v>{}, 
+            std::make_tuple(std::forward<decltype(spans)>(spans)...));
     }
     
     template<typename... Spans>
     auto part_view(Spans&&... spans) const
     {
         return get_collapsed_view(
-            data(), dims_.data(), _n_all_indexer_tuple_t<_depth_v>{}, std::forward_as_tuple(spans...));
+            data(), dims_.data(), _n_all_indexer_tuple_t<_depth_v>{}, 
+            std::make_tuple(std::forward<decltype(spans)>(spans)...));
+    }
+
+    template<typename Function>
+    void traverse(Function fn)
+    {
+        std::for_each_n(data(), total_size(), fn);
+    }
+
+    template<typename Function>
+    void traverse(Function fn) const
+    {
+        std::for_each_n(data(), total_size(), fn);
     }
 
 protected:

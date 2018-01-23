@@ -35,6 +35,12 @@ using remove_cvref_t = typename remove_cvref<T>::type;
 template<typename... T>
 constexpr bool _always_false_v = false;
 
+// used to print type
+template<typename... T>
+void static_print_type()
+{
+    static_assert(false);
+}
 
 // constructed from arbitrary arguments and gives nothing
 struct _empty_struct
@@ -42,6 +48,23 @@ struct _empty_struct
     template<typename... T>
     _empty_struct(T...) {}
 };
+
+
+// tuple of T repeated n times
+template<size_t N, typename T, typename Tuple = std::tuple<>>
+struct _repeat_tuple;
+template<size_t N, typename T, typename... Ts>
+struct _repeat_tuple<N, T, std::tuple<Ts...>>
+{
+    using type = typename _repeat_tuple<N - 1, T, std::tuple<Ts..., T>>::type;
+};
+template<typename T, typename... Ts>
+struct _repeat_tuple<0, T, std::tuple<Ts...>>
+{
+    using type = std::tuple<Ts...>;
+};
+template<size_t N, typename T>
+using _repeat_tuple_t = typename _repeat_tuple<N, T>::type;
 
 
 template<typename Return, typename X, typename Y>
