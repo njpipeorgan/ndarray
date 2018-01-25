@@ -92,7 +92,7 @@ public:
 
 class _irregular_indexer
 {
-protected:
+public:
     std::vector<size_t> list_{};
 
 public:

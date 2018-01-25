@@ -31,16 +31,11 @@ struct remove_cvref :
 template<typename T>
 using remove_cvref_t = typename remove_cvref<T>::type;
 
+
 // used to give template argument dependent false for static_assert
 template<typename... T>
 constexpr bool _always_false_v = false;
 
-// used to print type
-template<typename... T>
-void static_print_type()
-{
-    static_assert(false);
-}
 
 // constructed from arbitrary arguments and gives nothing
 struct _empty_struct

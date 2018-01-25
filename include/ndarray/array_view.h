@@ -62,8 +62,15 @@ public:
 
 public:
     array_view_base(_base_ptr_t base_ptr, _base_dims_t base_dims, _indexers_t indexers, size_t base_stride ={}) :
-        base_ptr_{base_ptr}, base_dims_{base_dims}, indexers_{std::move(indexers)}, base_stride_{base_stride} {}
+        base_ptr_{base_ptr}, base_dims_{base_dims}, indexers_{indexers}, base_stride_{base_stride}
+    {
+        std::cout << "array_view_base constructor called\n";
+    }
 
+    _base_ptr_t _get_base_ptr() const
+    {
+        return base_ptr_;
+    }
     _base_ptr_t& _get_base_ptr_ref()
     {
         return base_ptr_;
@@ -198,15 +205,7 @@ public:
 
 public:
     simple_view(_base_ptr_t base_ptr, _base_dims_t base_dims, _indexers_t indexers, size_t) :
-        _my_base{base_ptr, base_dims, std::move(indexers)} {}
-
-    // convert from lvalue non-const view to this type
-    simple_view(const simple_view<_no_const_elem_t, _indexers_t>& other) :
-        _my_base{other.base_ptr_, other.base_dims_, other.indexers_} {}
-
-    // convert from rvalue non-const view to this type
-    simple_view(simple_view<_no_const_elem_t, _indexers_t>&& other) :
-        _my_base{other.base_ptr_, other.base_dims_, std::move(other.indexers_)} {}
+        _my_base{base_ptr, base_dims, indexers} {}
 
     ptrdiff_t stride() const noexcept
     {
@@ -289,15 +288,7 @@ public:
 
 public:
     regular_view(_base_ptr_t base_ptr, _base_dims_t base_dims, _indexers_t indexers, size_t base_stride) :
-        _my_base{base_ptr, base_dims, std::move(indexers), base_stride} {}
-
-    // convert from lvalue non-const view to this type
-    regular_view(const regular_view<_no_const_elem_t, _indexers_t>& other) :
-        _my_base{other.base_ptr_, other.base_dims_, other.indexers_, other.base_stride_} {}
-
-    // convert from rvalue non-const view to this type
-    regular_view(regular_view<_no_const_elem_t, _indexers_t>&& other) :
-        _my_base{other.base_ptr_, other.base_dims_, std::move(other.indexers_), other.base_stride_} {}
+        _my_base{base_ptr, base_dims, indexers, base_stride} {}
 
     ptrdiff_t stride() const noexcept
     {
@@ -388,15 +379,7 @@ public:
 
 public:
     irregular_view(_base_ptr_t base_ptr, _base_dims_t base_dims, _indexers_t indexers, size_t base_stride) :
-        _my_base{base_ptr, base_dims, std::move(indexers), base_stride} {}
-
-    // convert from lvalue non-const view to this type
-    irregular_view(const irregular_view<_no_const_elem_t, _indexers_t>& other) :
-        _my_base{other.base_ptr_, other.base_dims_, other.indexers_, other.base_stride_} {}
-
-    // convert from rvalue non-const view to this type
-    irregular_view(irregular_view<_no_const_elem_t, _indexers_t>&& other) :
-        _my_base{other.base_ptr_, other.base_dims_, std::move(other.indexers_), other.base_stride_} {}
+        _my_base{base_ptr, base_dims, indexers, base_stride} {}
 
     ptrdiff_t stride() const noexcept
     {
@@ -449,7 +432,8 @@ public:
         using iter_type = _derive_view_iter_type_t<
             this->_non_scalar_indexers_table[Level], _indexers_t, irregular_view, decltype(sub_view), false>;
         //using _ = typename iter_type::_;
-        return iter_type{*this, sub_view, ptr_stride};
+        iter_type ret{*this, sub_view, ptr_stride};
+        return ret;
     }
 
     template<size_t Level = 1>
