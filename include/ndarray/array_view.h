@@ -61,11 +61,10 @@ public:
     const _base_stride_t base_stride_;    // base stride between elements
 
 public:
-    array_view_base(_base_ptr_t base_ptr, _base_dims_t base_dims, _indexers_t indexers, size_t base_stride ={}) :
-        base_ptr_{base_ptr}, base_dims_{base_dims}, indexers_{indexers}, base_stride_{base_stride}
-    {
-        std::cout << "array_view_base constructor called\n";
-    }
+    explicit array_view_base(_base_ptr_t base_ptr, _base_dims_t base_dims, 
+                             _indexers_t indexers, size_t base_stride ={}) :
+        base_ptr_{base_ptr}, base_dims_{base_dims}, 
+        indexers_{indexers}, base_stride_{base_stride} {}
 
     _base_ptr_t _get_base_ptr() const
     {
@@ -204,7 +203,8 @@ public:
     static constexpr size_t _base_depth_v = _my_base::_base_depth_v;
 
 public:
-    simple_view(_base_ptr_t base_ptr, _base_dims_t base_dims, _indexers_t indexers, size_t) :
+    explicit simple_view(_base_ptr_t base_ptr, _base_dims_t base_dims, 
+                         _indexers_t indexers, size_t) :
         _my_base{base_ptr, base_dims, indexers} {}
 
     ptrdiff_t stride() const noexcept
@@ -287,7 +287,8 @@ public:
     static constexpr size_t _base_depth_v = _my_base::_base_depth_v;
 
 public:
-    regular_view(_base_ptr_t base_ptr, _base_dims_t base_dims, _indexers_t indexers, size_t base_stride) :
+    explicit regular_view(_base_ptr_t base_ptr, _base_dims_t base_dims, 
+                          _indexers_t indexers, size_t base_stride) :
         _my_base{base_ptr, base_dims, indexers, base_stride} {}
 
     ptrdiff_t stride() const noexcept
@@ -378,7 +379,8 @@ public:
     static constexpr size_t _base_depth_v = _my_base::_base_depth_v;
 
 public:
-    irregular_view(_base_ptr_t base_ptr, _base_dims_t base_dims, _indexers_t indexers, size_t base_stride) :
+    explicit irregular_view(_base_ptr_t base_ptr, _base_dims_t base_dims, 
+                            _indexers_t indexers, size_t base_stride) :
         _my_base{base_ptr, base_dims, indexers, base_stride} {}
 
     ptrdiff_t stride() const noexcept

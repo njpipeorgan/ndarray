@@ -36,14 +36,14 @@ namespace ndarray
 class _all_span
 {
 public:
-    constexpr _all_span() {}
+    constexpr explicit _all_span() {}
 
-    constexpr size_t first(size_t size) const noexcept
+    size_t first(size_t size) const noexcept
     {
         return 0;
     }
 
-    constexpr size_t last(size_t size) const noexcept
+    size_t last(size_t size) const noexcept
     {
         return size;
     }
@@ -56,13 +56,13 @@ class _simple_span
                   std::is_integral_v<TLast>,
                   "Span specifications should have integral types.");
 protected:
-    const TFirst first_{};
-    const TLast last_{};
+    TFirst first_{};
+    TLast last_{};
 
 public:
-    constexpr _simple_span() {}
+    constexpr explicit _simple_span() {}
 
-    constexpr _simple_span(TFirst first, TLast last) :
+    constexpr explicit _simple_span(TFirst first, TLast last) :
         first_(first), last_(last) {}
 
     size_t first(size_t size) const noexcept
@@ -87,11 +87,12 @@ class _regular_span : public _simple_span<TFirst, TLast>
                   "Span specifications should have integral types.");
 
 protected:
-    const TStep step_{};
+    TStep step_{};
 
 public:
-    constexpr _regular_span() {}
-    constexpr _regular_span(TFirst first, TLast last, TStep step) :
+    constexpr explicit _regular_span() = default;
+
+    constexpr explicit _regular_span(TFirst first, TLast last, TStep step) :
         _simple_span<TFirst, TLast>(first, last), step_(step) {}
 
     ptrdiff_t first(size_t size) const noexcept
@@ -103,6 +104,7 @@ public:
         //NDARRAY_ASSERT(step_ > 0 ? ret <= size : (ret < size || ret == size_t(-1)));
         return ret;
     }
+    
     ptrdiff_t last(size_t size) const noexcept
     {
         NDARRAY_ASSERT(step_ != 0);
@@ -112,6 +114,7 @@ public:
         //NDARRAY_ASSERT(step_ > 0 ? ret <= size : (ret < size || ret == size_t(-1)));
         return ret;
     }
+    
     constexpr ptrdiff_t step() const noexcept
     {
         return ptrdiff_t(step_);
@@ -122,17 +125,18 @@ template<typename Indices>
 class _irregular_span
 {
 protected:
-    const Indices indices_{};
+    Indices indices_{};
 
 public:
-    _irregular_span() {}
+    explicit _irregular_span() = default;
 
-    _irregular_span(const Indices& indices) :
+    explicit _irregular_span(const Indices& indices) :
         indices_(indices) {}
-    _irregular_span(Indices&& indices) :
+    
+    explicit _irregular_span(Indices&& indices) :
         indices_(std::move(indices)) {}
 
-    auto get_index(size_t i, size_t size)
+    size_t get_index(size_t i, size_t size)
     {
         NDARRAY_CHECK_BOUND_SCALAR(i, indices_.size());
         size_t ret = _add_if_negative<size_t>(indices_[i], size);
@@ -144,6 +148,7 @@ public:
     {
         return std::move(indices_);
     }
+
     Indices vector() const &
     {
         return indices_;

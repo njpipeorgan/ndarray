@@ -24,21 +24,21 @@ class _scalar_indexer
 class _all_indexer
 {
 public:
-    _all_indexer() = default;
+    explicit _all_indexer() = default;
 
-    size_t size(size_t base_size) const noexcept
+    size_t size(size_t base_size) const
     {
         return base_size;
     }
-    ptrdiff_t step() const noexcept
+    ptrdiff_t step() const
     {
         return ptrdiff_t(1);
     }
-    size_t operator[](size_t i) const noexcept
+    size_t operator[](size_t i) const
     {
         return i;
     }
-    size_t at(size_t i) const noexcept
+    size_t at(size_t i) const
     {
         return (*this)[i];
     }
@@ -50,14 +50,16 @@ protected:
     size_t size_{};
 
 public:
-    _simple_indexer() = default;
-    _simple_indexer(size_t size) :
+    explicit _simple_indexer() = default;
+
+    explicit _simple_indexer(size_t size) :
         _all_indexer{}, size_{size} {}
 
     size_t size(size_t = 0) const noexcept
     {
         return size_;
     }
+
     size_t at(size_t i) const noexcept
     {
         NDARRAY_CHECK_BOUND_SCALAR(i, size_);
@@ -71,8 +73,9 @@ protected:
     ptrdiff_t step_{};
 
 public:
-    _regular_indexer() = default;
-    _regular_indexer(size_t size, ptrdiff_t step) :
+    explicit _regular_indexer() = default;
+
+    explicit _regular_indexer(size_t size, ptrdiff_t step) :
         _simple_indexer{size}, step_{step} {}
 
     ptrdiff_t step() const noexcept
@@ -96,10 +99,12 @@ public:
     std::vector<size_t> list_{};
 
 public:
-    _irregular_indexer() = default;
-    _irregular_indexer(std::vector<size_t>&& list) :
+    explicit _irregular_indexer() = default;
+
+    explicit _irregular_indexer(std::vector<size_t>&& list) :
         list_{std::move(list)} {};
-    _irregular_indexer(const std::vector<size_t>& list) :
+
+    explicit _irregular_indexer(const std::vector<size_t>& list) :
         list_{list} {};
 
     auto size(size_t = 0) const noexcept

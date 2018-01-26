@@ -30,10 +30,10 @@ protected:
     _indices_t   indices_{}; // zeros by default
 
 public:
-    _irregular_indices(_view_cref_t view_cref, _indices_t indices) : 
+    explicit _irregular_indices(_view_cref_t view_cref, _indices_t indices) : 
         view_cref_{view_cref}, indices_{indices} {}
 
-    _irregular_indices(_view_cref_t view_cref) : 
+    explicit  _irregular_indices(_view_cref_t view_cref) : 
         view_cref_{view_cref} {}
 
     // get a reference to indices
@@ -289,7 +289,7 @@ public:
     _ptr_stride_t ptr_stride_;  // always positive
 
 public:
-    _regular_view_iter(_sub_view_t sub_view, _ptr_stride_t ptr_stride) : 
+    explicit _regular_view_iter(_sub_view_t sub_view, _ptr_stride_t ptr_stride) : 
         ret_view_{sub_view}, ptr_stride_{ptr_stride} {}
 
     _base_ptr_t& my_base_ptr_ref()
@@ -405,12 +405,12 @@ public:
     using _my_const_t   = _irregular_view_iter<_sub_view_t, _base_view_t, true>;
 
 public:
-    _indices_t    indices_;    // zeros by default internally
-    _ret_view_t   ret_view_;
-    _ptr_stride_t ptr_stride_; // always positive
+    _indices_t          indices_;    // zeros by default internally
+    mutable _ret_view_t ret_view_;
+    _ptr_stride_t       ptr_stride_; // always positive
 
 public:
-    _irregular_view_iter(_view_cref_t base_view_cref, _sub_view_t sub_view, _ptr_stride_t ptr_stride) : 
+    explicit _irregular_view_iter(_view_cref_t base_view_cref, _sub_view_t sub_view, _ptr_stride_t ptr_stride) : 
         indices_{base_view_cref}, ret_view_{sub_view}, ptr_stride_{ptr_stride} {}
     
     auto& _get_indices_ref()
@@ -425,7 +425,7 @@ public:
         return base_view_cref_.dimension<IterLevel>();
     }
 
-    void _update_base_ptr()
+    void _update_base_ptr() const
     {
         ret_view_._get_base_ptr_ref() = indices_.get_base_ptr(ptr_stride_);
     }
@@ -482,12 +482,12 @@ public:
     const _ret_view_t& _dereference_to_cref() const
     {
         this->_update_base_ptr();
-        return ret_view;
+        return ret_view_;
     }
     _ret_view_t operator*() const
     {
         this->_update_base_ptr();
-        return ret_view;
+        return ret_view_;
     }
     _ret_view_t operator[](ptrdiff_t diff) const
     {
@@ -558,8 +558,8 @@ protected:
     _elem_ptr_t ptr_{nullptr};
 
 public:
-    _simple_elem_iter() = default;
-    _simple_elem_iter(_elem_ptr_t ptr) :
+    explicit _simple_elem_iter() = default;
+    explicit _simple_elem_iter(_elem_ptr_t ptr) :
         ptr_{ptr} {}
 
     _my_type& operator+=(ptrdiff_t diff)
@@ -659,8 +659,8 @@ protected:
     _stride_t   stride_{1};
 
 public:
-    _regular_elem_iter() = default;
-    _regular_elem_iter(_elem_ptr_t ptr, _stride_t stride) :
+    explicit _regular_elem_iter() = default;
+    explicit _regular_elem_iter(_elem_ptr_t ptr, _stride_t stride) :
         ptr_{ptr}, stride_{stride}
     {
         NDARRAY_ASSERT(stride_ != 0);
@@ -765,7 +765,7 @@ protected:
     _indices_t indices_;
 
 public:
-    _irregular_elem_iter(_view_cref_t view_cref, _indices_array_t indices_array) :
+    explicit _irregular_elem_iter(_view_cref_t view_cref, _indices_array_t indices_array) :
         indices_{view_cref, indices_array} {}
 
     template<typename Diff>

@@ -28,12 +28,12 @@ protected:
 
 public:
     template<typename T>
-    array(std::initializer_list<T> dims)
+    explicit array(std::initializer_list<T> dims)
     {
         resize(dims);
     }
     template<typename Dims>
-    array(const Dims& dims)
+    explicit array(const Dims& dims)
     {
         resize(dims);
     }
