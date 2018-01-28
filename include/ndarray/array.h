@@ -15,14 +15,14 @@ template<typename T, size_t Depth>
 class array
 {
 public:
-    using _elem_t = T;
+    using _elem_t     = T;
     static constexpr size_t _depth_v = Depth;
+    using _data_t     = std::vector<T>;
+    using _dims_t     = std::array<size_t, _depth_v>;
+    using _indexers_t = _n_all_indexer_tuple_t<_depth_v>;
     static_assert(_depth_v > 0);
 
-    using _data_t = std::vector<T>;
-    using _dims_t = std::array<size_t, _depth_v>;
-
-protected:
+public:
     _data_t data_{};
     _dims_t dims_{};
 
@@ -32,6 +32,7 @@ public:
     {
         resize(dims);
     }
+    
     template<typename Dims>
     explicit array(const Dims& dims)
     {
@@ -83,7 +84,7 @@ public:
     _elem_t& tuple_at(const Tuple& indices)
     {
         static_assert(std::tuple_size_v<Tuple> == _depth_v, "incorrect number of indices");
-        return _base_at(_get_position(indices));
+        return _linear_at(_get_position(indices));
     }
 
     // indexing with a tuple/array of integers
@@ -91,7 +92,7 @@ public:
     const _elem_t& tuple_at(const Tuple& indices) const
     {
         static_assert(std::tuple_size_v<Tuple> == _depth_v, "incorrect number of indices");
-        return _base_at(_get_position(indices));
+        return _linear_at(_get_position(indices));
     }
    
     // indexing with multiple integers
@@ -119,19 +120,19 @@ public:
     }
 
     template<typename... Spans>
-    auto part_view(Spans&&... spans)
+    _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>> 
+        part_view(Spans&&... spans)
     {
         return get_collapsed_view(
-            data(), dims_.data(), _n_all_indexer_tuple_t<_depth_v>{}, 
-            std::make_tuple(std::forward<decltype(spans)>(spans)...));
+            data(), dims_.data(), _indexers_t{}, std::make_tuple(std::forward<decltype(spans)>(spans)...));
     }
     
     template<typename... Spans>
-    auto part_view(Spans&&... spans) const
+    _derive_view_type_t<const _elem_t, _indexers_t, std::tuple<Spans...>>
+        part_view(Spans&&... spans) const
     {
         return get_collapsed_view(
-            data(), dims_.data(), _n_all_indexer_tuple_t<_depth_v>{}, 
-            std::make_tuple(std::forward<decltype(spans)>(spans)...));
+            data(), dims_.data(), _indexers_t{}, std::make_tuple(std::forward<decltype(spans)>(spans)...));
     }
 
     template<typename Function>
@@ -146,19 +147,19 @@ public:
         std::for_each_n(data(), total_size(), fn);
     }
 
-protected:
+public:
     size_t _total_size_from_dims() const
     {
         return std::accumulate(dims_.cbegin(), dims_.cend(), size_t(1), std::multiplies<>{});
     }
 
-    _elem_t& _base_at(size_t pos)
+    _elem_t& _linear_at(size_t pos)
     {
         NDARRAY_ASSERT(pos < total_size());
         return data_[pos];
     }
     
-    const _elem_t& _base_at(size_t pos) const
+    const _elem_t& _linear_at(size_t pos) const
     {
         NDARRAY_ASSERT(pos < total_size());
         return data_[pos];

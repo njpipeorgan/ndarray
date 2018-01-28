@@ -61,9 +61,9 @@ public:
     const _base_stride_t base_stride_;    // base stride between elements
 
 public:
-    explicit array_view_base(_base_ptr_t base_ptr, _base_dims_t base_dims, 
+    explicit array_view_base(_base_ptr_t base_ptr, _base_dims_t base_dims,
                              _indexers_t indexers, size_t base_stride ={}) :
-        base_ptr_{base_ptr}, base_dims_{base_dims}, 
+        base_ptr_{base_ptr}, base_dims_{base_dims},
         indexers_{indexers}, base_stride_{base_stride} {}
 
     _base_ptr_t _get_base_ptr() const
@@ -122,13 +122,16 @@ public:
     }
 
     template<typename SpanTuple>
-    auto tuple_part_view(SpanTuple&& spans) const
+    _derive_view_type_t<_elem_t, _indexers_t, SpanTuple>
+        tuple_part_view(SpanTuple&& spans) const
     {
         return get_collapsed_view(
             base_ptr_, base_dims_, indexers_, std::forward<decltype(spans)>(spans));
     }
+
     template<typename... Spans>
-    auto part_view(Spans&&... spans) const
+    _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+        part_view(Spans&&... spans) const
     {
         return tuple_part_view(std::make_tuple(std::forward<decltype(spans)>(spans)...));
     }
@@ -203,7 +206,7 @@ public:
     static constexpr size_t _base_depth_v = _my_base::_base_depth_v;
 
 public:
-    explicit simple_view(_base_ptr_t base_ptr, _base_dims_t base_dims, 
+    explicit simple_view(_base_ptr_t base_ptr, _base_dims_t base_dims,
                          _indexers_t indexers, size_t) :
         _my_base{base_ptr, base_dims, indexers} {}
 
@@ -229,34 +232,57 @@ public:
         return {this->base_ptr_ + this->_total_size()};
     }
 
+    template<bool IsExplicitConst, size_t Level>
+    auto _begin_impl() const
+    {
+        static_assert(0 < Level && Level <= _depth_v);
+        if constexpr (Level == _depth_v)
+        {
+            return this->element_begin();
+        }
+        else
+        {
+            size_t ptr_stride = this->_total_base_size<
+                _base_depth_v, this->_non_scalar_indexers_table[Level - 1] + 1>();
+            auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
+            return _regular_view_iter<decltype(sub_view), IsExplicitConst>{std::move(sub_view), ptr_stride};
+        }
+    }
+    template<bool IsExplicitConst, size_t Level>
+    auto _end_impl() const
+    {
+        static_assert(0 < Level && Level <= _depth_v);
+        if constexpr (Level == _depth_v)
+        {
+            return this->element_begin();
+        }
+        else
+        {
+            auto iter = this->_begin_impl<IsExplicitConst, Level>();
+            iter += this->_total_size<Level>();
+            return iter;
+        }
+    }
+
     template<size_t Level = 1>
     auto begin() const
     {
-        static_assert(0 < Level && Level < _depth_v);
-        size_t ptr_stride = this->_total_base_size<
-            _base_depth_v, this->_non_scalar_indexers_table[Level - 1] + 1>();
-        auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
-        using iter_type = _regular_view_iter<decltype(sub_view), false>;
-        return iter_type{sub_view, ptr_stride};
+        return _begin_impl<false, Level>();
     }
     template<size_t Level = 1>
     auto end() const
     {
-        auto iter = this->begin<Level>();
-        iter += this->_total_size<Level>();
-        return iter;
+        return _end_impl<false, Level>();
     }
     template<size_t Level = 1>
     auto cbegin() const
     {
-        using iter_type = typename decltype(this->begin<Level>())::_my_const_t;
-        return iter_type{this->begin<Level>()};
+        return _begin_impl<true, Level>();
     }
     template<size_t Level = 1>
     auto cend() const
     {
-        using iter_type = typename decltype(this->end<Level>())::_my_const_t;
-        return iter_type{this->end<Level>()};
+        return _end_impl<true, Level>();
     }
 
     // for each element in the view, call fn(element) in order
@@ -287,7 +313,7 @@ public:
     static constexpr size_t _base_depth_v = _my_base::_base_depth_v;
 
 public:
-    explicit regular_view(_base_ptr_t base_ptr, _base_dims_t base_dims, 
+    explicit regular_view(_base_ptr_t base_ptr, _base_dims_t base_dims,
                           _indexers_t indexers, size_t base_stride) :
         _my_base{base_ptr, base_dims, indexers, base_stride} {}
 
@@ -320,34 +346,57 @@ public:
         return {this->base_ptr_ + this->_total_size() * stride(), stride()};
     }
 
+    template<bool IsExplicitConst, size_t Level>
+    auto _begin_impl() const
+    {
+        static_assert(0 < Level && Level <= _depth_v);
+        if constexpr (Level == _depth_v)
+        {
+            return this->element_begin();
+        }
+        else
+        {
+            size_t ptr_stride = this->_total_base_size<
+                _base_depth_v, this->_non_scalar_indexers_table[Level - 1] + 1>();
+            auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
+            return _regular_view_iter<decltype(sub_view), IsExplicitConst>{std::move(sub_view), ptr_stride};
+        }
+    }
+    template<bool IsExplicitConst, size_t Level>
+    auto _end_impl() const
+    {
+        static_assert(0 < Level && Level <= _depth_v);
+        if constexpr (Level == _depth_v)
+        {
+            return this->element_begin();
+        }
+        else
+        {
+            auto iter = this->_begin_impl<IsExplicitConst, Level>();
+            iter += this->_total_size<Level>();
+            return iter;
+        }
+    }
+
     template<size_t Level = 1>
     auto begin() const
     {
-        static_assert(0 < Level && Level < _depth_v);
-        size_t ptr_stride = this->_total_base_size<
-            _base_depth_v, this->_non_scalar_indexers_table[Level - 1] + 1>();
-        auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
-        using iter_type = _regular_view_iter<decltype(sub_view), false>;
-        return iter_type{sub_view, ptr_stride};
+        return _begin_impl<false, Level>();
     }
     template<size_t Level = 1>
     auto end() const
     {
-        auto iter = this->begin<Level>();
-        iter += this->_total_size<Level>();
-        return iter;
+        return _end_impl<false, Level>();
     }
     template<size_t Level = 1>
     auto cbegin() const
     {
-        using iter_type = typename decltype(this->begin<Level>())::_my_const_t;
-        return iter_type{this->begin<Level>()};
+        return _begin_impl<true, Level>();
     }
     template<size_t Level = 1>
     auto cend() const
     {
-        using iter_type = typename decltype(this->end<Level>())::_my_const_t;
-        return iter_type{this->end<Level>()};
+        return _end_impl<true, Level>();
     }
 
     // for each element in the view, call fn(element) in order
@@ -379,7 +428,7 @@ public:
     static constexpr size_t _base_depth_v = _my_base::_base_depth_v;
 
 public:
-    explicit irregular_view(_base_ptr_t base_ptr, _base_dims_t base_dims, 
+    explicit irregular_view(_base_ptr_t base_ptr, _base_dims_t base_dims,
                             _indexers_t indexers, size_t base_stride) :
         _my_base{base_ptr, base_dims, indexers, base_stride} {}
 
@@ -416,69 +465,85 @@ public:
         return {*this, indices};
     }
 
-    template<size_t Level>
-    auto _regular_iter_begin() const
+
+    template<bool IsExplicitConst, size_t Level>
+    auto _regular_begin_impl() const
     { // is used if the iterator on this level is regular
         size_t ptr_stride = this->_total_base_size<
             _base_depth_v, this->_non_scalar_indexers_table[Level - 1] + 1>();
         auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
-        using iter_type = _regular_view_iter<decltype(sub_view), false>;
-        return iter_type{sub_view, ptr_stride};
+        return _regular_view_iter<decltype(sub_view), IsExplicitConst>{sub_view, ptr_stride};
     }
     template<size_t Level>
-    auto _irregular_iter_begin() const
+    auto _irregular_begin_impl() const
     { // is used if the iterator on this level is irregular
-        auto sub_view = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
         size_t ptr_stride = this->_total_base_size<
             _base_depth_v, this->_non_scalar_indexers_table[Level - 1] + 1>();
+        auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
         using iter_type = _derive_view_iter_type_t<
             this->_non_scalar_indexers_table[Level], _indexers_t, irregular_view, decltype(sub_view), false>;
-        //using _ = typename iter_type::_;
-        iter_type ret{*this, sub_view, ptr_stride};
-        return ret;
+        return iter_type{*this, sub_view, ptr_stride};
+    }
+
+    template<bool IsExplicitConst, size_t Level>
+    auto _begin_impl() const
+    {
+        static_assert(0 < Level && Level <= _depth_v);
+        if constexpr (Level == _depth_v)
+        {
+            return this->element_begin();
+        }
+        else
+        {
+            constexpr _view_type iter_type_v =
+                _identify_view_iter_type_v<this->_non_scalar_indexers_table[Level], _indexers_t>;
+            static_assert(iter_type_v == _view_type::regular || iter_type_v == _view_type::irregular);
+            if constexpr (iter_type_v == _view_type::regular)
+                return this->_regular_begin_impl<IsExplicitConst, Level>();
+            else
+                return this->_irregular_begin_impl<IsExplicitConst, Level>();
+        }
+    }
+    template<bool IsExplicitConst, size_t Level>
+    auto _end_impl() const
+    {
+        static_assert(0 < Level && Level <= _depth_v);
+        if constexpr (Level == _depth_v)
+        {
+            return this->element_end();
+        }
+        else
+        {
+            auto iter = this->_begin_impl<IsExplicitConst, Level>(); // get begin as the iterator
+            constexpr _view_type iter_type_v =
+                _identify_view_iter_type_v<this->_non_scalar_indexers_table[Level], _indexers_t>;
+            if constexpr (iter_type_v == _view_type::regular)
+                iter += this->_total_size<Level>();                  // add total_size if regular
+            else
+                iter._get_indices_ref()[0] = this->dimension<0>();   // modify indices[0] if irregular
+            return iter;                                             // return the iterator
+        }
     }
 
     template<size_t Level = 1>
     auto begin() const
     {
-        static_assert(0 < Level && Level < _depth_v);
-        constexpr _view_type iter_type_v =
-            _identify_view_iter_type_v<this->_non_scalar_indexers_table[Level], _indexers_t>;
-        static_assert(iter_type_v == _view_type::regular || iter_type_v == _view_type::irregular);
-        if constexpr (iter_type_v == _view_type::regular)
-            return this->_regular_iter_begin<Level>();
-        else
-            return this->_irregular_iter_begin<Level>();
+        return _begin_impl<false, Level>();
     }
     template<size_t Level = 1>
     auto end() const
     {
-        constexpr _view_type iter_type_v =
-            _identify_view_iter_type_v<this->_non_scalar_indexers_table[Level], _indexers_t>;
-        if constexpr (iter_type_v == _view_type::regular)
-        {
-            auto iter = this->begin<Level>();
-            iter += this->_total_size<Level>();
-            return iter;
-        }
-        else
-        {
-            auto iter = this->begin<Level>();
-            iter._get_indices_ref()[0] = this->dimension<0>();
-            return iter;
-        }
+        return _end_impl<false, Level>();
     }
     template<size_t Level = 1>
     auto cbegin() const
     {
-        using iter_type = typename decltype(this->begin<Level>())::_my_const_t;
-        return iter_type{this->begin<Level>()};
+        return _begin_impl<true, Level>();
     }
     template<size_t Level = 1>
     auto cend() const
     {
-        using iter_type = typename decltype(this->end<Level>())::_my_const_t;
-        return iter_type{this->end<Level>()};
+        return _end_impl<true, Level>();
     }
 
     // for each element in the view, call fn(element) in order

@@ -342,13 +342,9 @@ public:
         return ret;
     }
 
-    const _ret_view_t& _dereference_to_cref() const
+    const _ret_view_t& operator*() const
     {
-        return ret_view;
-    }
-    _ret_view_t operator*() const
-    {
-        return ret_view;
+        return ret_view_;
     }
     _ret_view_t operator[](ptrdiff_t diff) const
     {
@@ -479,12 +475,7 @@ public:
         return ret;
     }
 
-    const _ret_view_t& _dereference_to_cref() const
-    {
-        this->_update_base_ptr();
-        return ret_view_;
-    }
-    _ret_view_t operator*() const
+    const _ret_view_t& operator*() const
     {
         this->_update_base_ptr();
         return ret_view_;
