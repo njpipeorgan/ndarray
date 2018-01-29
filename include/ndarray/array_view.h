@@ -136,6 +136,19 @@ public:
         return tuple_part_view(std::make_tuple(std::forward<decltype(spans)>(spans)...));
     }
 
+    // check whether having same dimensions with another array, starting at specific levels
+    template<size_t MyStartLevel = 0, size_t OtherStartLevel = 0, typename OtherArray>
+    bool has_same_dimensions(const OtherArray& other) const
+    {
+        if constexpr (MyStartLevel == _depth_v || OtherStartLevel == OtherArray::_depth_v)
+            return false;
+        else if constexpr (MyStartLevel == _depth_v - 1 && OtherStartLevel == OtherArray::_depth_v - 1)
+            return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>();
+        else
+            return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>() && 
+            has_same_dimensions<MyStartLevel + 1, OtherStartLevel + 1>(other);
+    }
+
 public:
     template<size_t LastLevel = _depth_v, size_t FirstLevel = 0>
     size_t _total_size() const
@@ -294,6 +307,47 @@ public:
             fn(*(this->base_ptr_ + i));
     }
 
+    // copy data to destination given size, assuming no aliasing
+    template<typename U>
+    void copy_to(U* dest_ptr, size_t size) const
+    {
+        auto src_ptr = this->base_ptr_;
+        for (size_t i = 0; i < size; ++i)
+        {
+            *dest_ptr = *src_ptr;
+            ++dest_ptr;
+            ++src_ptr;
+        }
+    }
+
+    // copy data to destination, assuming no aliasing
+    template<typename U>
+    void copy_to(U* dest_ptr) const
+    {
+        this->copy_to(dest_ptr, this->total_size());
+    }
+
+    // copy data from source given size, assuming no aliasing
+    template<typename U>
+    void copy_from(U* src_ptr, size_t size) const
+    {
+        static_assert(!_is_const_v);
+        auto dest_ptr = this->base_ptr_;
+        for (size_t i = 0; i < size; ++i)
+        {
+            *dest_ptr = *src_ptr;
+            ++dest_ptr;
+            ++src_ptr;
+        }
+    }
+
+    // copy data from source, assuming no aliasing
+    template<typename U>
+    void copy_from(U* src_ptr) const
+    {
+        this->copy_from(dest_ptr, this->total_size());
+    }
+
 };
 
 template<typename T, typename IndexerTuple>
@@ -407,6 +461,49 @@ public:
         const ptrdiff_t stride = this->stride();
         for (size_t i = 0; i < size; ++i)
             fn(*(this->base_ptr_ + i * stride));
+    }
+
+    // copy data to destination given size, assuming no aliasing
+    template<typename U>
+    void copy_to(U* dest_ptr, size_t size) const
+    {
+        auto src_ptr = this->base_ptr_;
+        const auto stride = this->stride();
+        for (size_t i = 0; i < size; ++i)
+        {
+            *dest_ptr = *src_ptr;
+            ++dest_ptr;
+            src_ptr += stride;
+        }
+    }
+
+    // copy data to destination, assuming no aliasing
+    template<typename U>
+    void copy_to(U* dest_ptr) const
+    {
+        this->copy_to(dest_ptr, this->total_size());
+    }
+
+    // copy data from source given size, assuming no aliasing
+    template<typename U>
+    void copy_from(U* src_ptr, size_t size) const
+    {
+        static_assert(!_is_const_v);
+        auto dest_ptr = this->base_ptr_;
+        const auto stride = this->stride();
+        for (size_t i = 0; i < size; ++i)
+        {
+            *dest_ptr = *src_ptr;
+            dest_ptr += stride;
+            ++src_ptr;
+        }
+    }
+
+    // copy data from source, assuming no aliasing
+    template<typename U>
+    void copy_from(U* src_ptr) const
+    {
+        this->copy_from(dest_ptr, this->total_size());
     }
 
 };
@@ -553,6 +650,38 @@ public:
         traverse_impl(fn);
     }
 
+    // copy data to destination, assuming no aliasing
+    template<typename U>
+    void copy_to(U* dest_ptr) const
+    {
+        this->traverse([&dest_ptr](auto src_val) { *dest_ptr = src_val; ++dest_ptr; });
+    }
+
+    // copy data to destination with size ignored, assuming no aliasing
+    template<typename U>
+    void copy_to(U* dest_ptr, size_t) const
+    {
+        this->copy_to(dest_ptr);
+    }
+
+    // copy data from source, assuming no aliasing
+    template<typename U>
+    void copy_from(U* dest_ptr) const
+    {
+        static_assert(!_is_const_v);
+        this->traverse([&dest_ptr](auto& src_val) { src_val = *dest_ptr; ++dest_ptr; });
+    }
+
+    // copy data from source with size ignored, assuming no aliasing
+    template<typename U>
+    void copy_from(U* dest_ptr, size_t) const
+    {
+        this->copy_from(dest_ptr);
+    }
+
+
+
+
 protected:
     template<size_t BC = 0, size_t LC = 0, typename Function>
     void traverse_impl(Function fn, size_t offset = 0) const
@@ -578,6 +707,8 @@ protected:
                 traverse_impl<BC + 1, LC + 1>(fn, new_offset + (this->_base_indexer<BC>())[i]);
         }
     }
+
+
 
 };
 

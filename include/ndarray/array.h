@@ -147,6 +147,59 @@ public:
         std::for_each_n(data(), total_size(), fn);
     }
 
+    // check whether having same dimensions with another array, starting at specific levels
+    template<size_t MyStartLevel = 0, size_t OtherStartLevel = 0, typename OtherArray>
+    bool has_same_dimensions(const OtherArray& other) const
+    {
+        if constexpr (MyStartLevel == _depth_v || OtherStartLevel == OtherArray::_depth_v)
+            return false;
+        else if constexpr (MyStartLevel == _depth_v - 1 && OtherStartLevel == OtherArray::_depth_v - 1)
+            return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>();
+        else
+            return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>() && 
+                has_same_dimensions<MyStartLevel + 1, OtherStartLevel + 1>(other);
+    }
+
+    // copy data to destination given size, assuming no aliasing
+    template<typename U>
+    void copy_to(U* dest_ptr, size_t size) const
+    {
+        auto src_ptr = this->data();
+        for (size_t i = 0; i < size; ++i)
+        {
+            *dest_ptr = *src_ptr;
+            ++dest_ptr;
+            ++src_ptr;
+        }
+    }
+
+    // copy data to destination, assuming no aliasing
+    template<typename U>
+    void copy_to(U* dest_ptr) const
+    {
+        this->copy_to(dest_ptr, this->total_size());
+    }
+
+    // copy data from source given size, assuming no aliasing
+    template<typename U>
+    void copy_from(U* src_ptr, size_t size)
+    {
+        auto dest_ptr = this->data();
+        for (size_t i = 0; i < size; ++i)
+        {
+            *dest_ptr = *src_ptr;
+            ++dest_ptr;
+            ++src_ptr;
+        }
+    }
+
+    // copy data from source, assuming no aliasing
+    template<typename U>
+    void copy_from(U* src_ptr)
+    {
+        this->copy_from(dest_ptr, this->total_size());
+    }
+
 public:
     size_t _total_size_from_dims() const
     {
