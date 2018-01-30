@@ -29,27 +29,36 @@ public:
     _dims_t dims_{};
 
 public:
-    explicit array(_dims_t dims) : 
-        dims_{dims}
+    array(_dims_t dims) :
+        dims_{std::move(dims)}
     {
         resize();
     }
 
-    template<typename T>
-    explicit array(std::initializer_list<T> dims)
-    {
-        resize(dims);
-    }
-
     template<typename View, _view_type = View::_my_view_type_v>
-    explicit array(const View& other) : 
+    array(const View& other) :
         dims_{other.dimensions()}
     {
         assert(this->_identifier_ptr() != other._identifier_ptr());
         resize();
         other.copy_to(this->data());
     }
+
+    array(const std::vector<_elem_t>& data, _dims_t dims) :
+        data_{data}, dims_{dims}
+    {
+        // caller should check the dimensions
+        NDARRAY_ASSERT(_check_size());
+    }
+
+    array(std::vector<_elem_t>&& data, _dims_t dims) :
+        data_{std::move(data)}, dims_{dims}
+    {
+        // caller should check the dimensions
+        NDARRAY_ASSERT(_check_size());
+    }
     
+
     // copy data from another view, assuming identical dimensions
     template<typename View, _view_type = View::_my_view_type_v>
     _my_type& operator=(const View& other)
@@ -66,19 +75,9 @@ public:
 
     // resize by a container as new dimensions
     template<typename Dims>
-    void resize(const _dims_t& dims)
+    void resize(_dims_t dims)
     {
-        dims_ = dims;
-        resize();
-    }
-
-    // resize by an initializer list as new dimensions
-    template<typename T>
-    void resize(std::initializer_list<T> dims)
-    {
-        NDARRAY_ASSERT(dims.size() == _depth_v);
-        NDARRAY_ASSERT(std::all_of(dims.begin(), dims.end(), [](auto d) { return d >= 0; }));
-        std::copy_n(dims.begin(), _depth_v, dims_.begin());
+        dims_ = std::move(dims);
         resize();
     }
 
@@ -86,6 +85,14 @@ public:
     size_t total_size() const
     {
         return data_.size();
+    }
+
+    // check whether the size of data_ is compatible with dims_
+    bool _check_size() const
+    {
+        bool is_compatible = (total_size() == _total_size_from_dims());
+        assert(is_compatible);
+        return is_compatible;
     }
 
     // dimension of the array on the i-th level
@@ -142,7 +149,7 @@ public:
         static_assert(std::tuple_size_v<Tuple> == _depth_v, "incorrect number of indices");
         return _linear_at(_get_position(indices));
     }
-   
+
     // indexing with multiple integers
     template<typename... Ints>
     _elem_t& at(Ints... ints)
@@ -161,20 +168,30 @@ public:
     {
         return data_.data();
     }
-    
+
     const _elem_t* data() const
     {
         return data_.data();
     }
 
+    _data_t&& _get_vector() &&
+    {
+        return std::move(data_);
+    }
+
+    const _data_t& _get_vector() const &
+    {
+        return data_;
+    }
+
     template<typename... Spans>
-    _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>> 
+    _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
         part_view(Spans&&... spans)
     {
         return get_collapsed_view(
             data(), dims_.data(), _indexers_t{}, std::make_tuple(std::forward<decltype(spans)>(spans)...));
     }
-    
+
     template<typename... Spans>
     _derive_view_type_t<const _elem_t, _indexers_t, std::tuple<Spans...>>
         part_view(Spans&&... spans) const
@@ -204,8 +221,8 @@ public:
         else if constexpr (MyStartLevel == _depth_v - 1 && OtherStartLevel == OtherArray::_depth_v - 1)
             return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>();
         else
-            return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>() && 
-                has_same_dimensions<MyStartLevel + 1, OtherStartLevel + 1>(other);
+            return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>() &&
+            has_same_dimensions<MyStartLevel + 1, OtherStartLevel + 1>(other);
     }
 
     // copy data to destination given size, assuming no aliasing
@@ -259,7 +276,7 @@ public:
         NDARRAY_ASSERT(pos < total_size());
         return data_[pos];
     }
-    
+
     const _elem_t& _linear_at(size_t pos) const
     {
         NDARRAY_ASSERT(pos < total_size());
@@ -286,6 +303,18 @@ auto make_array(View&& view)
 {
     using view_t = remove_cvref_t<View>;
     return array<typename view_t::_no_const_elem_t, view_t::_depth_v>(std::forward<View>(view));
+}
+
+template<typename T>
+auto make_array(const std::vector<T>& data)
+{
+    return array<T, 1>(data, {data.size()});
+}
+
+template<typename T>
+auto make_array(std::vector<T>&& data)
+{
+    return array<T, 1>(std::move(data), {data.size()});
 }
 
 }
