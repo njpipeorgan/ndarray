@@ -247,10 +247,10 @@ public:
                          _indexers_t indexers, size_t) :
         _my_base{base_ptr, base_dims, indexers} {}
 
-    template<typename OtherArray>
-    _my_type& operator=(const OtherArray& other)
+    template<typename Other>
+    _my_type& operator=(Other&& other)
     {
-        data_copy(other, *this);
+        data_copy(std::forward<Other>(other), *this);
         return *this;
     }
 
@@ -404,10 +404,10 @@ public:
                           _indexers_t indexers, size_t base_stride) :
         _my_base{base_ptr, base_dims, indexers, base_stride} {}
 
-    template<typename OtherArray>
-    _my_type& operator=(const OtherArray& other)
+    template<typename Other>
+    _my_type& operator=(Other&& other)
     {
-        data_copy(other, *this);
+        data_copy(std::forward<Other>(other), *this);
         return *this;
     }
 
@@ -571,10 +571,10 @@ public:
                             _indexers_t indexers, size_t base_stride) :
         _my_base{base_ptr, base_dims, indexers, base_stride} {}
 
-    template<typename OtherArray>
-    _my_type& operator=(const OtherArray& other)
+    template<typename Other>
+    _my_type& operator=(Other&& other)
     {
-        data_copy(other, *this);
+        data_copy(std::forward<Other>(other), *this);
         return *this;
     }
 
