@@ -8,13 +8,14 @@ Multi-dimensional array library for C++
     
     int main(int argc, char* argv[])
     {
-        ndarray::array<int, 3> arr({10, 10, 2});        // create a 3-dimensional 10x10x2 array
+        // construct an array of integers {0, 1, 2, ..., 99}, and reshape it to 10x10.
+        auto a1 = reshape<2>(range(100), {10, 10});
         
-        auto first_view  = arr.part_view(All, All, 0);  // create a 10x10 view with first  elements in the pairs
-        auto second_view = arr.part_view(All, All, 1);  // create a 10x10 view with second elements in the pairs
-        
-        first_view. traverse([](auto& x) { x = 3; });   // set all elements in first_view to be 3
-        second_view.traverse([](auto& x) { x = 5; });   // set all elements in first_view to be 5
+        // construct an array from the first column of a1
+        auto a2 = flatten(make_array(a1(All, 1)));
+
+        // copy the third column of a1 to the first column
+        a1(All, 1) = a1(All, 3);
         
         return 0;
     }
