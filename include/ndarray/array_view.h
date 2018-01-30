@@ -75,6 +75,11 @@ public:
         return base_ptr_;
     }
 
+    const size_t* _identifier_ptr() const
+    {
+        return base_dims_;
+    }
+
     // access i-th indexer from indexer tuple
     template<size_t BaseLevel>
     decltype(auto) _base_indexer() const noexcept
@@ -104,6 +109,25 @@ public:
     {
         size_t bdim_i = _base_dimension<_non_scalar_indexers_table[I]>();
         return _level_indexer<I>().size(bdim_i);
+    }
+
+    // array of dimensions
+    std::array<size_t, _depth_v> dimensions() const
+    {
+        std::array<size_t, _depth_v> dims;
+        _dimensions_impl(dims.data());
+        return dims;
+    }
+
+    // total size of the view
+    template<size_t LastLevel = _depth_v, size_t FirstLevel = 0>
+    size_t total_size() const
+    {
+        static_assert(FirstLevel <= LastLevel && LastLevel <= _depth_v);
+        if constexpr (FirstLevel == LastLevel)
+            return size_t(1);
+        else
+            return dimension<LastLevel - 1>() * total_size<LastLevel - 1, FirstLevel>();
     }
 
     // indexing with a tuple/array of integers
@@ -150,15 +174,6 @@ public:
     }
 
 public:
-    template<size_t LastLevel = _depth_v, size_t FirstLevel = 0>
-    size_t _total_size() const
-    {
-        static_assert(FirstLevel <= LastLevel && LastLevel <= _depth_v);
-        if constexpr (FirstLevel == LastLevel)
-            return size_t(1);
-        else
-            return dimension<LastLevel - 1>() * _total_size<LastLevel - 1, FirstLevel>();
-    }
 
     template<size_t LastBaseLevel = _base_depth_v, size_t FirstBaseLevel = 0>
     size_t _total_base_size() const
@@ -169,8 +184,7 @@ public:
         else
             return _base_dimension<LastBaseLevel - 1>() * _total_base_size<LastBaseLevel - 1, FirstBaseLevel>();
     }
-
-
+    
     _elem_t& _base_at(size_t pos) const
     {
         if constexpr (!_has_base_stride_v)
@@ -201,12 +215,21 @@ public:
         }
     }
 
+    template<size_t Level = 0>
+    void _dimensions_impl(size_t* dims) const
+    {
+        dims[Level] = this->dimension<Level>();
+        if constexpr (Level + 1 < _depth_v)
+            _dimensions_impl<Level + 1>(dims);
+    }
+
 };
 
 template<typename T, typename IndexerTuple>
 class simple_view : public array_view_base<T, IndexerTuple>
 {
 public:
+    using _my_type         = simple_view;
     using _my_base         = array_view_base<T, IndexerTuple>;
     using _elem_t          = typename _my_base::_elem_t;
     using _no_const_elem_t = typename _my_base::_no_const_elem_t;
@@ -217,11 +240,19 @@ public:
     static constexpr bool   _is_const_v   = _my_base::_is_const_v;
     static constexpr size_t _depth_v      = _my_base::_depth_v;
     static constexpr size_t _base_depth_v = _my_base::_base_depth_v;
+    static constexpr _view_type _my_view_type_v = _view_type::simple;
 
 public:
     explicit simple_view(_base_ptr_t base_ptr, _base_dims_t base_dims,
                          _indexers_t indexers, size_t) :
         _my_base{base_ptr, base_dims, indexers} {}
+
+    template<typename OtherArray>
+    _my_type& operator=(const OtherArray& other)
+    {
+        data_copy(other, *this);
+        return *this;
+    }
 
     ptrdiff_t stride() const noexcept
     {
@@ -272,7 +303,7 @@ public:
         else
         {
             auto iter = this->_begin_impl<IsExplicitConst, Level>();
-            iter += this->_total_size<Level>();
+            iter += this->total_size<Level>();
             return iter;
         }
     }
@@ -308,44 +339,44 @@ public:
     }
 
     // copy data to destination given size, assuming no aliasing
-    template<typename U>
-    void copy_to(U* dest_ptr, size_t size) const
+    template<typename Iter>
+    void copy_to(Iter dst, size_t size) const
     {
-        auto src_ptr = this->base_ptr_;
+        auto src = this->base_ptr_;
         for (size_t i = 0; i < size; ++i)
         {
-            *dest_ptr = *src_ptr;
-            ++dest_ptr;
-            ++src_ptr;
+            *dst = *src;
+            ++dst;
+            ++src;
         }
     }
 
     // copy data to destination, assuming no aliasing
-    template<typename U>
-    void copy_to(U* dest_ptr) const
+    template<typename Iter>
+    void copy_to(Iter dst) const
     {
-        this->copy_to(dest_ptr, this->total_size());
+        this->copy_to(dst, this->total_size());
     }
 
     // copy data from source given size, assuming no aliasing
-    template<typename U>
-    void copy_from(U* src_ptr, size_t size) const
+    template<typename Iter>
+    void copy_from(Iter src, size_t size) const
     {
         static_assert(!_is_const_v);
-        auto dest_ptr = this->base_ptr_;
+        auto dst = this->base_ptr_;
         for (size_t i = 0; i < size; ++i)
         {
-            *dest_ptr = *src_ptr;
-            ++dest_ptr;
-            ++src_ptr;
+            *dst = *src;
+            ++dst;
+            ++src;
         }
     }
 
     // copy data from source, assuming no aliasing
-    template<typename U>
-    void copy_from(U* src_ptr) const
+    template<typename Iter>
+    void copy_from(Iter src) const
     {
-        this->copy_from(dest_ptr, this->total_size());
+        this->copy_from(src, this->total_size());
     }
 
 };
@@ -354,6 +385,7 @@ template<typename T, typename IndexerTuple>
 class regular_view : public array_view_base<T, IndexerTuple>
 {
 public:
+    using _my_type         = regular_view;
     using _my_base         = array_view_base<T, IndexerTuple>;
     using _elem_t          = typename _my_base::_elem_t;
     using _no_const_elem_t = typename _my_base::_no_const_elem_t;
@@ -365,11 +397,19 @@ public:
     static constexpr bool   _is_const_v   = _my_base::_is_const_v;
     static constexpr size_t _depth_v      = _my_base::_depth_v;
     static constexpr size_t _base_depth_v = _my_base::_base_depth_v;
+    static constexpr _view_type _my_view_type_v = _view_type::regular;
 
 public:
     explicit regular_view(_base_ptr_t base_ptr, _base_dims_t base_dims,
                           _indexers_t indexers, size_t base_stride) :
         _my_base{base_ptr, base_dims, indexers, base_stride} {}
+
+    template<typename OtherArray>
+    _my_type& operator=(const OtherArray& other)
+    {
+        data_copy(other, *this);
+        return *this;
+    }
 
     ptrdiff_t stride() const noexcept
     {
@@ -427,7 +467,7 @@ public:
         else
         {
             auto iter = this->_begin_impl<IsExplicitConst, Level>();
-            iter += this->_total_size<Level>();
+            iter += this->total_size<Level>();
             return iter;
         }
     }
@@ -464,46 +504,46 @@ public:
     }
 
     // copy data to destination given size, assuming no aliasing
-    template<typename U>
-    void copy_to(U* dest_ptr, size_t size) const
+    template<typename Iter>
+    void copy_to(Iter dst, size_t size) const
     {
-        auto src_ptr = this->base_ptr_;
+        auto src = this->base_ptr_;
         const auto stride = this->stride();
         for (size_t i = 0; i < size; ++i)
         {
-            *dest_ptr = *src_ptr;
-            ++dest_ptr;
-            src_ptr += stride;
+            *dst = *src;
+            src += stride;
+            ++dst;
         }
     }
 
     // copy data to destination, assuming no aliasing
-    template<typename U>
-    void copy_to(U* dest_ptr) const
+    template<typename Iter>
+    void copy_to(Iter dst) const
     {
-        this->copy_to(dest_ptr, this->total_size());
+        this->copy_to(dst, this->total_size());
     }
 
     // copy data from source given size, assuming no aliasing
-    template<typename U>
-    void copy_from(U* src_ptr, size_t size) const
+    template<typename Iter>
+    void copy_from(Iter src, size_t size) const
     {
         static_assert(!_is_const_v);
-        auto dest_ptr = this->base_ptr_;
+        auto dst = this->base_ptr_;
         const auto stride = this->stride();
         for (size_t i = 0; i < size; ++i)
         {
-            *dest_ptr = *src_ptr;
-            dest_ptr += stride;
-            ++src_ptr;
+            *dst = *src;
+            dst += stride;
+            ++src;
         }
     }
 
     // copy data from source, assuming no aliasing
-    template<typename U>
-    void copy_from(U* src_ptr) const
+    template<typename Iter>
+    void copy_from(Iter src) const
     {
-        this->copy_from(dest_ptr, this->total_size());
+        this->copy_from(src, this->total_size());
     }
 
 };
@@ -512,6 +552,7 @@ template<typename T, typename IndexerTuple>
 class irregular_view : public regular_view<T, IndexerTuple>
 {
 public:
+    using _my_type         = irregular_view;
     using _my_base         = regular_view<T, IndexerTuple>;
     using _elem_t          = typename _my_base::_elem_t;
     using _no_const_elem_t = typename _my_base::_no_const_elem_t;
@@ -523,11 +564,19 @@ public:
     static constexpr bool   _is_const_v   = _my_base::_is_const_v;
     static constexpr size_t _depth_v      = _my_base::_depth_v;
     static constexpr size_t _base_depth_v = _my_base::_base_depth_v;
+    static constexpr _view_type _my_view_type_v = _view_type::irregular;
 
 public:
     explicit irregular_view(_base_ptr_t base_ptr, _base_dims_t base_dims,
                             _indexers_t indexers, size_t base_stride) :
         _my_base{base_ptr, base_dims, indexers, base_stride} {}
+
+    template<typename OtherArray>
+    _my_type& operator=(const OtherArray& other)
+    {
+        data_copy(other, *this);
+        return *this;
+    }
 
     ptrdiff_t stride() const noexcept
     {
@@ -615,7 +664,7 @@ public:
             constexpr _view_type iter_type_v =
                 _identify_view_iter_type_v<this->_non_scalar_indexers_table[Level], _indexers_t>;
             if constexpr (iter_type_v == _view_type::regular)
-                iter += this->_total_size<Level>();                  // add total_size if regular
+                iter += this->total_size<Level>();                  // add total_size if regular
             else
                 iter._get_indices_ref()[0] = this->dimension<0>();   // modify indices[0] if irregular
             return iter;                                             // return the iterator
@@ -647,36 +696,40 @@ public:
     template<typename Function>
     void traverse(Function fn) const
     {
-        traverse_impl(fn);
+        traverse_impl<0, 0, Function>(fn);
     }
 
     // copy data to destination, assuming no aliasing
-    template<typename U>
-    void copy_to(U* dest_ptr) const
+    template<typename Iter>
+    void copy_to(Iter dst) const
     {
-        this->traverse([&dest_ptr](auto src_val) { *dest_ptr = src_val; ++dest_ptr; });
+        auto copy_to_fn = [dst = dst](auto src_val) mutable { *dst = src_val; ++dst; };
+        //auto copy_to_fn = [](auto x) {}; 
+        this->traverse<decltype((copy_to_fn))>(copy_to_fn); // pass by reference type
     }
 
     // copy data to destination with size ignored, assuming no aliasing
-    template<typename U>
-    void copy_to(U* dest_ptr, size_t) const
+    template<typename Iter>
+    void copy_to(Iter dst, size_t) const
     {
-        this->copy_to(dest_ptr);
+        this->copy_to(dst);
     }
 
     // copy data from source, assuming no aliasing
-    template<typename U>
-    void copy_from(U* dest_ptr) const
+    template<typename Iter>
+    void copy_from(Iter src) const
     {
         static_assert(!_is_const_v);
-        this->traverse([&dest_ptr](auto& src_val) { src_val = *dest_ptr; ++dest_ptr; });
+        auto copy_from_fn = [src = src](auto& dst_val) mutable { dst_val = *src; ++src; };
+        //auto& copy_from_fn_ref = copy_from_fn;
+        this->traverse<decltype((copy_from_fn))>(copy_from_fn); // pass by reference type
     }
 
     // copy data from source with size ignored, assuming no aliasing
-    template<typename U>
-    void copy_from(U* dest_ptr, size_t) const
+    template<typename Iter>
+    void copy_from(Iter src, size_t) const
     {
-        this->copy_from(dest_ptr);
+        this->copy_from(src);
     }
 
 
@@ -689,7 +742,7 @@ protected:
         const size_t new_offset = offset * this->_base_dimension<BC>();
         if constexpr (this->_non_scalar_indexers_table[LC] > BC) // encounter _scalar_indexer
         {
-            traverse_impl<BC + 1, LC>(fn, new_offset);
+            traverse_impl<BC + 1, LC, Function>(fn, new_offset);
         }
         else if constexpr (LC == _depth_v - 1) // the last Level
         {
@@ -704,7 +757,7 @@ protected:
         {
             const size_t dim_i  = this->dimension<LC>();
             for (size_t i = 0; i < dim_i; ++i)
-                traverse_impl<BC + 1, LC + 1>(fn, new_offset + (this->_base_indexer<BC>())[i]);
+                traverse_impl<BC + 1, LC + 1, Function>(fn, new_offset + (this->_base_indexer<BC>())[i]);
         }
     }
 

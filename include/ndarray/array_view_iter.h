@@ -549,8 +549,8 @@ protected:
     _elem_ptr_t ptr_{nullptr};
 
 public:
-    explicit _simple_elem_iter() = default;
-    explicit _simple_elem_iter(_elem_ptr_t ptr) :
+    _simple_elem_iter() = default;
+    _simple_elem_iter(_elem_ptr_t ptr) :
         ptr_{ptr} {}
 
     _my_type& operator+=(ptrdiff_t diff)
@@ -573,12 +573,12 @@ public:
     }
     _my_type& operator++()
     {
-        *this += 1;
+        ++ptr_;
         return *this;
     }
     _my_type& operator--()
     {
-        *this -= 1;
+        --ptr_;
         return *this;
     }
     _my_type operator++(int)
@@ -650,8 +650,8 @@ protected:
     _stride_t   stride_{1};
 
 public:
-    explicit _regular_elem_iter() = default;
-    explicit _regular_elem_iter(_elem_ptr_t ptr, _stride_t stride) :
+    _regular_elem_iter() = default;
+    _regular_elem_iter(_elem_ptr_t ptr, _stride_t stride) :
         ptr_{ptr}, stride_{stride}
     {
         NDARRAY_ASSERT(stride_ != 0);
@@ -677,12 +677,12 @@ public:
     }
     _my_type& operator++()
     {
-        *this += stride_;
+        ptr_ += stride_;
         return *this;
     }
     _my_type& operator--()
     {
-        *this -= stride_;
+        ptr_ -= stride_;
         return *this;
     }
     _my_type operator++(int)
@@ -756,7 +756,7 @@ protected:
     _indices_t indices_;
 
 public:
-    explicit _irregular_elem_iter(_view_cref_t view_cref, _indices_array_t indices_array) :
+    _irregular_elem_iter(_view_cref_t view_cref, _indices_array_t indices_array) :
         indices_{view_cref, indices_array} {}
 
     template<typename Diff>

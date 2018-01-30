@@ -32,7 +32,8 @@ enum class _view_type
     simple,
     regular,
     irregular,
-    invalid    //not used
+    array,     // not used
+    invalid    // not used
 };
 
 
@@ -278,6 +279,22 @@ struct _derive_view_iter_type
 template<size_t IterDepth, typename IndexerTuple, typename BaseView, typename SubView, bool IsExplicitConst>
 using _derive_view_iter_type_t = typename _derive_view_iter_type<
     IterDepth, IndexerTuple, BaseView, SubView, IsExplicitConst>::type;
+
+
+template<typename... Ts>
+struct _is_all_ints;
+template<typename T1, typename... Ts>
+struct _is_all_ints<T1, Ts...>
+{
+    static constexpr bool value = std::is_integral_v<remove_cvref_t<T1>> && _is_all_ints<Ts...>::value;
+};
+template<>
+struct _is_all_ints<>
+{
+    static constexpr bool value = true;
+};
+template<typename... Ts>
+constexpr auto _is_all_ints_v = _is_all_ints<Ts...>::value;
 
 
 

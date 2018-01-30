@@ -15,11 +15,13 @@ template<typename T, size_t Depth>
 class array
 {
 public:
+    using _my_type    = array;
     using _elem_t     = T;
     static constexpr size_t _depth_v = Depth;
     using _data_t     = std::vector<T>;
     using _dims_t     = std::array<size_t, _depth_v>;
     using _indexers_t = _n_all_indexer_tuple_t<_depth_v>;
+    static constexpr _view_type _my_view_type_v = _view_type::array;
     static_assert(_depth_v > 0);
 
 public:
@@ -27,16 +29,33 @@ public:
     _dims_t dims_{};
 
 public:
+    explicit array(_dims_t dims) : 
+        dims_{dims}
+    {
+        resize();
+    }
+
     template<typename T>
     explicit array(std::initializer_list<T> dims)
     {
         resize(dims);
     }
-    
-    template<typename Dims>
-    explicit array(const Dims& dims)
+
+    template<typename View, _view_type = View::_my_view_type_v>
+    explicit array(const View& other) : 
+        dims_{other.dimensions()}
     {
-        resize(dims);
+        assert(this->_identifier_ptr() != other._identifier_ptr());
+        resize();
+        other.copy_to(this->data());
+    }
+    
+    // copy data from another view, assuming identical dimensions
+    template<typename View, _view_type = View::_my_view_type_v>
+    _my_type& operator=(const View& other)
+    {
+        data_copy(other, *this);
+        return *this;
     }
 
     // resize by existing dimensions
@@ -47,11 +66,9 @@ public:
 
     // resize by a container as new dimensions
     template<typename Dims>
-    void resize(const Dims& dims)
+    void resize(const _dims_t& dims)
     {
-        NDARRAY_ASSERT(dims.size() == _depth_v);
-        NDARRAY_ASSERT(std::all_of(dims.begin(), dims.end(), [](auto d) { return d >= 0; }));
-        std::copy_n(dims.begin(), _depth_v, dims_.begin());
+        dims_ = dims;
         resize();
     }
 
@@ -77,6 +94,37 @@ public:
     {
         static_assert(I < _depth_v);
         return dims_[I];
+    }
+
+    const size_t* _identifier_ptr() const
+    {
+        return dims_.data();
+    }
+
+    template<typename... Ints, typename = std::enable_if_t<sizeof...(Ints) == _depth_v && _is_all_ints_v<Ints...>>>
+    _elem_t& operator()(Ints&&... ints)
+    {
+        return this->at(std::forward<decltype(ints)>(ints)...);
+    }
+
+    template<typename... Ints, typename = std::enable_if_t<sizeof...(Ints) == _depth_v && _is_all_ints_v<Ints...>>>
+    _elem_t& operator()(Ints&&... ints) const
+    {
+        return this->at(std::forward<decltype(ints)>(ints)...);
+    }
+
+    template<typename... Spans, typename = std::enable_if_t<sizeof...(Spans) != _depth_v || !_is_all_ints_v<Spans...>>>
+    _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+        operator()(Spans&&... spans)
+    {
+        return this->part_view(std::forward<decltype(spans)>(spans)...);
+    }
+
+    template<typename... Spans, typename = std::enable_if_t<sizeof...(Spans) != _depth_v || !_is_all_ints_v<Spans...>>>
+    _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+        operator()(Spans&&... spans) const
+    {
+        return this->part_view(std::forward<decltype(spans)>(spans)...);
     }
 
     // indexing with a tuple/array of integers
@@ -161,43 +209,43 @@ public:
     }
 
     // copy data to destination given size, assuming no aliasing
-    template<typename U>
-    void copy_to(U* dest_ptr, size_t size) const
+    template<typename Iter>
+    void copy_to(Iter dst, size_t size) const
     {
-        auto src_ptr = this->data();
+        auto src = this->data();
         for (size_t i = 0; i < size; ++i)
         {
-            *dest_ptr = *src_ptr;
-            ++dest_ptr;
-            ++src_ptr;
+            *dst = *src;
+            ++dst;
+            ++src;
         }
     }
 
     // copy data to destination, assuming no aliasing
-    template<typename U>
-    void copy_to(U* dest_ptr) const
+    template<typename Iter>
+    void copy_to(Iter dst) const
     {
-        this->copy_to(dest_ptr, this->total_size());
+        this->copy_to(dst, this->total_size());
     }
 
     // copy data from source given size, assuming no aliasing
-    template<typename U>
-    void copy_from(U* src_ptr, size_t size)
+    template<typename Iter>
+    void copy_from(Iter src, size_t size)
     {
-        auto dest_ptr = this->data();
+        auto dst = this->data();
         for (size_t i = 0; i < size; ++i)
         {
-            *dest_ptr = *src_ptr;
-            ++dest_ptr;
-            ++src_ptr;
+            *dst = *src;
+            ++dst;
+            ++src;
         }
     }
 
     // copy data from source, assuming no aliasing
-    template<typename U>
-    void copy_from(U* src_ptr)
+    template<typename Iter>
+    void copy_from(Iter src)
     {
-        this->copy_from(dest_ptr, this->total_size());
+        this->copy_from(src, this->total_size());
     }
 
 public:
@@ -231,5 +279,13 @@ public:
     }
 
 };
+
+
+template<typename View>
+auto make_array(View&& view)
+{
+    using view_t = remove_cvref_t<View>;
+    return array<typename view_t::_no_const_elem_t, view_t::_depth_v>(std::forward<View>(view));
+}
 
 }
