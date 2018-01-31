@@ -296,6 +296,10 @@ public:
     {
         return ret_view_._get_base_ptr_ref();
     }
+    const _base_ptr_t& my_base_ptr_ref() const
+    {
+        return ret_view_._get_base_ptr_ref();
+    }
 
     _my_type& operator+=(ptrdiff_t diff)
     {
@@ -540,10 +544,9 @@ class _simple_elem_iter
 {
 public:
     using _my_type    = _simple_elem_iter;
-    using _elem_t     = T;
-    using _elem_ptr_t = T*;
-    static constexpr bool _is_const_v = IsExplicitConst || std::is_const_v<_elem_t>;
-    using _ret_elem_t = std::conditional_t<_is_const_v, std::add_const_t<_elem_t>, _elem_t>;
+    static constexpr bool _is_const_v = IsExplicitConst || std::is_const_v<T>;
+    using _elem_t     = std::conditional_t<_is_const_v, const T, T>;
+    using _elem_ptr_t = _elem_t*;
 
 protected:
     _elem_ptr_t ptr_{nullptr};
@@ -594,11 +597,11 @@ public:
         return ret;
     }
 
-    _ret_elem_t& operator*() const
+    _elem_t& operator*() const
     {
         return *ptr_;
     }
-    _ret_elem_t& operator[](ptrdiff_t diff) const
+    _elem_t& operator[](ptrdiff_t diff) const
     {
         return *(ptr_ + diff);
     }
@@ -639,11 +642,10 @@ class _regular_elem_iter
 {
 public:
     using _my_type    = _regular_elem_iter;
-    using _elem_t     = T;
-    using _elem_ptr_t = T*;
     using _stride_t   = ptrdiff_t;
-    static constexpr bool _is_const_v = IsExplicitConst || std::is_const_v<_elem_t>;
-    using _ret_elem_t = std::conditional_t<_is_const_v, std::add_const_t<_elem_t>, _elem_t>;
+    static constexpr bool _is_const_v = IsExplicitConst || std::is_const_v<T>;
+    using _elem_t     = std::conditional_t<_is_const_v, const T, T>;
+    using _elem_ptr_t = _elem_t*;
 
 protected:
     _elem_ptr_t ptr_{nullptr};
@@ -698,11 +700,11 @@ public:
         return ret;
     }
 
-    _ret_elem_t& operator*() const
+    _elem_t& operator*() const
     {
         return *ptr_;
     }
-    _ret_elem_t& operator[](ptrdiff_t diff) const
+    _elem_t& operator[](ptrdiff_t diff) const
     {
         return *(ptr_ + diff * stride_);
     }
@@ -745,12 +747,13 @@ public:
     using _my_type     = _irregular_elem_iter;
     using _view_t      = View;
     using _view_cref_t = const _view_t&;
-    using _elem_t      = typename _view_t::_elem_t;
     static constexpr size_t _depth_v    = _view_t::_depth_v;
-    static constexpr bool   _is_const_v = IsExplicitConst || std::is_const_v<_elem_t>;
+    using _view_elem_t = typename _view_t::_elem_t;
+    static constexpr bool   _is_const_v = IsExplicitConst || std::is_const_v<_view_elem_t>;
+    using _elem_t     = std::conditional_t<_is_const_v, const _view_elem_t, _view_elem_t>;
+    using _elem_ptr_t = _elem_t*;
     using _indices_t   = _irregular_indices<_view_cref_t, _depth_v>;
     using _indices_array_t = std::array<size_t, _depth_v>;
-    using _ret_elem_t  = std::conditional_t<_is_const_v, std::add_const_t<_elem_t>, _elem_t>;
 
 protected:
     _indices_t indices_;
@@ -808,12 +811,12 @@ public:
         return ret;
     }
 
-    _ret_elem_t& operator*() const
+    _elem_t& operator*() const
     {
         return indices_.get_element_ref();
     }
     template<typename Diff>
-    _ret_elem_t& operator[](Diff diff) const
+    _elem_t& operator[](Diff diff) const
     {
         return *((*this) + diff);
     }

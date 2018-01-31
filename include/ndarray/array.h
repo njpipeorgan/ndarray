@@ -70,7 +70,7 @@ public:
     // resize by existing dimensions
     void resize()
     {
-        data_.resize(_total_size_from_dims());
+        data_.resize(_total_size_impl());
     }
 
     // resize by a container as new dimensions
@@ -90,7 +90,7 @@ public:
     // check whether the size of data_ is compatible with dims_
     bool _check_size() const
     {
-        bool is_compatible = (total_size() == _total_size_from_dims());
+        bool is_compatible = (total_size() == _total_size_impl());
         assert(is_compatible);
         return is_compatible;
     }
@@ -168,36 +168,165 @@ public:
     {
         return data_.data();
     }
-
     const _elem_t* data() const
     {
         return data_.data();
     }
 
-    _data_t&& _get_vector() &&
+    _simple_elem_iter<_elem_t> element_begin()
     {
-        return std::move(data_);
+        return {data()};
+    }
+    _simple_elem_iter<_elem_t> element_end()
+    {
+        return {data() + total_size()};
+    }
+    _simple_elem_const_iter<_elem_t> element_cbegin() const
+    {
+        return {data()};
+    }
+    _simple_elem_const_iter<_elem_t> element_cend() const
+    {
+        return data() + total_size();
+    }
+    _simple_elem_const_iter<_elem_t> element_begin() const
+    {
+        return element_cbegin();
+    }
+    _simple_elem_const_iter<_elem_t> element_end() const
+    {
+        return element_cend();
+    }
+    
+    template<bool IsExplicitConst, size_t Level>
+    auto _begin_impl()
+    {
+        static_assert(0 < Level && Level <= _depth_v);
+        if constexpr (Level == _depth_v)
+        {
+            return this->element_begin();
+        }
+        else
+        {
+            size_t ptr_stride = this->_total_size_impl<_depth_v, Level>();
+            auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
+            return _regular_view_iter<decltype(sub_view), IsExplicitConst>{std::move(sub_view), ptr_stride};
+        }
+    }
+    template<bool IsExplicitConst, size_t Level>
+    auto _end_impl()
+    {
+        static_assert(0 < Level && Level <= _depth_v);
+        if constexpr (Level == _depth_v)
+        {
+            return this->element_end();
+        }
+        else
+        {
+            auto iter = this->_begin_impl<IsExplicitConst, Level>();
+            iter.my_base_ptr_ref() += total_size();
+            return iter;
+        }
+    }
+    template<bool IsExplicitConst, size_t Level>
+    auto _begin_impl() const
+    {
+        static_assert(0 < Level && Level <= _depth_v);
+        if constexpr (Level == _depth_v)
+        {
+            return this->element_begin();
+        }
+        else
+        {
+            size_t ptr_stride = this->_total_size_impl<_depth_v, Level>();
+            auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
+            return _regular_view_iter<decltype(sub_view), IsExplicitConst>{std::move(sub_view), ptr_stride};
+        }
+    }
+    template<bool IsExplicitConst, size_t Level>
+    auto _end_impl() const
+    {
+        static_assert(0 < Level && Level <= _depth_v);
+        if constexpr (Level == _depth_v)
+        {
+            return this->element_end();
+        }
+        else
+        {
+            auto iter = this->_begin_impl<IsExplicitConst, Level>();
+            iter.my_base_ptr_ref() += total_size();
+            return iter;
+        }
     }
 
-    const _data_t& _get_vector() const &
+    template<size_t Level = 1>
+    auto begin()
+    {
+        return _begin_impl<false, Level>();
+    }
+    template<size_t Level = 1>
+    auto end()
+    {
+        return _end_impl<false, Level>();
+    }
+    template<size_t Level = 1>
+    auto cbegin() const
+    {
+        return _begin_impl<true, Level>();
+    }
+    template<size_t Level = 1>
+    auto cend() const
+    {
+        return _end_impl<true, Level>();
+    }
+    template<size_t Level = 1>
+    auto begin() const
+    {
+        return cbegin();
+    }
+    template<size_t Level = 1>
+    auto end() const
+    {
+        return cend();
+    }
+
+    _data_t& _get_vector()
+    {
+        return data_;
+    }
+    const _data_t& _get_vector() const
     {
         return data_;
     }
 
-    template<typename... Spans>
-    _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
-        part_view(Spans&&... spans)
+    template<typename SpanTuple>
+    _derive_view_type_t<const _elem_t, _indexers_t, SpanTuple>
+        tuple_part_view(SpanTuple&& spans) const
     {
         return get_collapsed_view(
-            data(), dims_.data(), _indexers_t{}, std::make_tuple(std::forward<decltype(spans)>(spans)...));
+            data(), dims_.data(), _indexers_t{}, std::forward<decltype(spans)>(spans));
+    }
+
+    template<typename SpanTuple>
+    _derive_view_type_t<_elem_t, _indexers_t, SpanTuple>
+        tuple_part_view(SpanTuple&& spans)
+    {
+        return get_collapsed_view(
+            data(), dims_.data(), _indexers_t{}, std::forward<decltype(spans)>(spans));
     }
 
     template<typename... Spans>
     _derive_view_type_t<const _elem_t, _indexers_t, std::tuple<Spans...>>
         part_view(Spans&&... spans) const
     {
-        return get_collapsed_view(
-            data(), dims_.data(), _indexers_t{}, std::make_tuple(std::forward<decltype(spans)>(spans)...));
+        return tuple_part_view(std::forward_as_tuple(spans...));
+    }
+
+    template<typename... Spans>
+    _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+        part_view(Spans&&... spans)
+    {
+        return tuple_part_view(std::forward_as_tuple(spans...));
     }
 
     template<typename Function>
@@ -266,9 +395,15 @@ public:
     }
 
 public:
-    size_t _total_size_from_dims() const
+
+    template<size_t LastLevel = _depth_v, size_t FirstLevel = 0>
+    size_t _total_size_impl() const
     {
-        return std::accumulate(dims_.cbegin(), dims_.cend(), size_t(1), std::multiplies<>{});
+        static_assert(FirstLevel <= LastLevel && LastLevel <= _depth_v);
+        if constexpr (FirstLevel == LastLevel)
+            return size_t(1);
+        else
+            return dimension<LastLevel - 1>() * _total_size_impl<LastLevel - 1, FirstLevel>();
     }
 
     _elem_t& _linear_at(size_t pos)
@@ -296,6 +431,7 @@ public:
     }
 
 };
+
 
 
 template<typename View>

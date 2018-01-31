@@ -8,5 +8,6 @@
 #include "array_view_iter.h"
 #include "data_copy.h"
 
+#include "array_interface.h"
 #include "array_rearrange.h"
 #include "array_construct.h"

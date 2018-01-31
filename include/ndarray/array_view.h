@@ -74,6 +74,10 @@ public:
     {
         return base_ptr_;
     }
+    const _base_ptr_t& _get_base_ptr_ref() const
+    {
+        return base_ptr_;
+    }
 
     const size_t* _identifier_ptr() const
     {
@@ -157,7 +161,7 @@ public:
     _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
         part_view(Spans&&... spans) const
     {
-        return tuple_part_view(std::make_tuple(std::forward<decltype(spans)>(spans)...));
+        return tuple_part_view(std::forward_as_tuple(spans...));
     }
 
     // check whether having same dimensions with another array, starting at specific levels
@@ -265,7 +269,7 @@ public:
     }
     _simple_elem_iter<_elem_t> element_end() const
     {
-        return {this->base_ptr_ + this->_total_size()};
+        return {this->base_ptr_ + this->total_size()};
     }
     _simple_elem_const_iter<_elem_t> element_cbegin() const
     {
@@ -273,7 +277,7 @@ public:
     }
     _simple_elem_const_iter<_elem_t> element_cend() const
     {
-        return {this->base_ptr_ + this->_total_size()};
+        return {this->base_ptr_ + this->total_size()};
     }
 
     template<bool IsExplicitConst, size_t Level>
@@ -298,7 +302,7 @@ public:
         static_assert(0 < Level && Level <= _depth_v);
         if constexpr (Level == _depth_v)
         {
-            return this->element_begin();
+            return this->element_end();
         }
         else
         {
@@ -333,7 +337,7 @@ public:
     template<typename Function>
     void traverse(Function fn) const
     {
-        const size_t size = this->_total_size();
+        const size_t size = this->total_size();
         for (size_t i = 0; i < size; ++i)
             fn(*(this->base_ptr_ + i));
     }
@@ -429,7 +433,7 @@ public:
     }
     _regular_elem_iter<_elem_t> element_end() const
     {
-        return {this->base_ptr_ + this->_total_size() * stride(), stride()};
+        return {this->base_ptr_ + this->total_size() * stride(), stride()};
     }
     _regular_elem_const_iter<_elem_t> element_cbegin() const
     {
@@ -437,7 +441,7 @@ public:
     }
     _regular_elem_const_iter<_elem_t> element_cend() const
     {
-        return {this->base_ptr_ + this->_total_size() * stride(), stride()};
+        return {this->base_ptr_ + this->total_size() * stride(), stride()};
     }
 
     template<bool IsExplicitConst, size_t Level>
@@ -462,7 +466,7 @@ public:
         static_assert(0 < Level && Level <= _depth_v);
         if constexpr (Level == _depth_v)
         {
-            return this->element_begin();
+            return this->element_end();
         }
         else
         {
@@ -497,7 +501,7 @@ public:
     template<typename Function>
     void traverse(Function fn) const
     {
-        const size_t    size   = this->_total_size();
+        const size_t    size   = this->total_size();
         const ptrdiff_t stride = this->stride();
         for (size_t i = 0; i < size; ++i)
             fn(*(this->base_ptr_ + i * stride));

@@ -35,7 +35,12 @@ enum class _view_type
     array,     // not used
     invalid    // not used
 };
-
+enum class _access_type
+{
+    vector   = 0,   // object that owns a vector
+    iterator = 1, // object that implements O(1) element_begin() and element_end()
+    traverse = 2  // object that implements O(1) traverse(Fn)
+};
 
 template<size_t N, typename ResultTuple = std::tuple<>>
 struct _n_all_indexer_tuple;
@@ -295,6 +300,41 @@ struct _is_all_ints<>
 };
 template<typename... Ts>
 constexpr auto _is_all_ints_v = _is_all_ints<Ts...>::value;
+
+
+template<typename Array>
+struct _identify_access_type_impl;
+//template<typename T>
+//struct _identify_access_type_impl<std::vector<T>>
+//{
+//    static constexpr _access_type value = _access_type::vector;
+//};
+template<typename T, size_t Depth>
+struct _identify_access_type_impl<array<T, Depth>>
+{
+    static constexpr _access_type value = _access_type::vector;
+};
+template<typename T, typename IndexerTuple>
+struct _identify_access_type_impl<simple_view<T, IndexerTuple>>
+{
+    static constexpr _access_type value = _access_type::iterator;
+};
+template<typename T, typename IndexerTuple>
+struct _identify_access_type_impl<regular_view<T, IndexerTuple>>
+{
+    static constexpr _access_type value = _access_type::iterator;
+};
+template<typename T, typename IndexerTuple>
+struct _identify_access_type_impl<irregular_view<T, IndexerTuple>>
+{
+    static constexpr _access_type value = _access_type::traverse;
+};
+template<typename Array>
+struct _identify_access_type : 
+    _identify_access_type_impl<remove_cvref_t<Array>> {};
+template<typename Array>
+constexpr _access_type _identify_access_type_v = _identify_access_type<Array>::value;
+
 
 
 
