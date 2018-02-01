@@ -82,7 +82,7 @@ public:
     }
 
     // total size of the array
-    size_t total_size() const
+    size_t size() const
     {
         return data_.size();
     }
@@ -90,7 +90,7 @@ public:
     // check whether the size of data_ is compatible with dims_
     bool _check_size() const
     {
-        bool is_compatible = (total_size() == _total_size_impl());
+        bool is_compatible = (size() == _total_size_impl());
         assert(is_compatible);
         return is_compatible;
     }
@@ -179,7 +179,7 @@ public:
     }
     _simple_elem_iter<_elem_t> element_end()
     {
-        return {data() + total_size()};
+        return {data() + size()};
     }
     _simple_elem_const_iter<_elem_t> element_cbegin() const
     {
@@ -187,7 +187,7 @@ public:
     }
     _simple_elem_const_iter<_elem_t> element_cend() const
     {
-        return data() + total_size();
+        return data() + size();
     }
     _simple_elem_const_iter<_elem_t> element_begin() const
     {
@@ -224,7 +224,7 @@ public:
         else
         {
             auto iter = this->_begin_impl<IsExplicitConst, Level>();
-            iter.my_base_ptr_ref() += total_size();
+            iter.my_base_ptr_ref() += size();
             return iter;
         }
     }
@@ -254,7 +254,7 @@ public:
         else
         {
             auto iter = this->_begin_impl<IsExplicitConst, Level>();
-            iter.my_base_ptr_ref() += total_size();
+            iter.my_base_ptr_ref() += size();
             return iter;
         }
     }
@@ -332,13 +332,13 @@ public:
     template<typename Function>
     void traverse(Function fn)
     {
-        std::for_each_n(data(), total_size(), fn);
+        std::for_each_n(data(), size(), fn);
     }
 
     template<typename Function>
     void traverse(Function fn) const
     {
-        std::for_each_n(data(), total_size(), fn);
+        std::for_each_n(data(), size(), fn);
     }
 
     // check whether having same dimensions with another array, starting at specific levels
@@ -371,7 +371,7 @@ public:
     template<typename Iter>
     void copy_to(Iter dst) const
     {
-        this->copy_to(dst, this->total_size());
+        this->copy_to(dst, this->size());
     }
 
     // copy data from source given size, assuming no aliasing
@@ -391,7 +391,7 @@ public:
     template<typename Iter>
     void copy_from(Iter src)
     {
-        this->copy_from(src, this->total_size());
+        this->copy_from(src, this->size());
     }
 
 public:
@@ -408,13 +408,13 @@ public:
 
     _elem_t& _linear_at(size_t pos)
     {
-        NDARRAY_ASSERT(pos < total_size());
+        NDARRAY_ASSERT(pos < size());
         return data_[pos];
     }
 
     const _elem_t& _linear_at(size_t pos) const
     {
-        NDARRAY_ASSERT(pos < total_size());
+        NDARRAY_ASSERT(pos < size());
         return data_[pos];
     }
 
@@ -431,7 +431,6 @@ public:
     }
 
 };
-
 
 
 template<typename View>

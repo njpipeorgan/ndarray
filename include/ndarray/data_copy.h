@@ -18,7 +18,7 @@ inline void aliased_data_copy(const SrcArray& src, DstArray& dst, size_t size)
     using temp_type = std::conditional_t<
         sizeof(typename src_t::_elem_t{}) < sizeof(typename dst_t::_elem_t{}),
         typename src_t::_elem_t, typename dst_t::_elem_t>;
-    std::vector<temp_type> temp(src.total_size());
+    std::vector<temp_type> temp(src.size());
 
     src.copy_to(temp.begin(), size);    // copy src to temp
     dst.copy_from(temp.begin(), size);  // then copy temp to dst
@@ -53,7 +53,7 @@ inline void data_copy(const SrcArray& src, DstArray& dst)
     constexpr _view_type dst_type_v = dst_t::_my_view_type_v;
 
     assert(src.has_same_dimensions(dst));
-    size_t size = src_type_v == _view_type::array ? src.total_size() : dst.total_size();
+    size_t size = src_type_v == _view_type::array ? src.size() : dst.size();
 
     if (src._identifier_ptr() != dst._identifier_ptr())
     {

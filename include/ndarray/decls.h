@@ -50,6 +50,12 @@ using _regular_elem_const_iter = typename _regular_elem_iter<T, true>;
 template<typename View>
 using _irregular_elem_const_iter = typename _irregular_elem_iter<View, true>;
 
+template<typename T>
+class range_view;
+template<typename T>
+class _range_view_iter;
+
+
 template<typename SrcArray, typename DstArray>
 inline void data_copy(const SrcArray& src, DstArray& dst);
 

@@ -125,13 +125,13 @@ public:
 
     // total size of the view
     template<size_t LastLevel = _depth_v, size_t FirstLevel = 0>
-    size_t total_size() const
+    size_t size() const
     {
         static_assert(FirstLevel <= LastLevel && LastLevel <= _depth_v);
         if constexpr (FirstLevel == LastLevel)
             return size_t(1);
         else
-            return dimension<LastLevel - 1>() * total_size<LastLevel - 1, FirstLevel>();
+            return dimension<LastLevel - 1>() * size<LastLevel - 1, FirstLevel>();
     }
 
     // indexing with a tuple/array of integers
@@ -269,7 +269,7 @@ public:
     }
     _simple_elem_iter<_elem_t> element_end() const
     {
-        return {this->base_ptr_ + this->total_size()};
+        return {this->base_ptr_ + this->size()};
     }
     _simple_elem_const_iter<_elem_t> element_cbegin() const
     {
@@ -277,7 +277,7 @@ public:
     }
     _simple_elem_const_iter<_elem_t> element_cend() const
     {
-        return {this->base_ptr_ + this->total_size()};
+        return {this->base_ptr_ + this->size()};
     }
 
     template<bool IsExplicitConst, size_t Level>
@@ -307,7 +307,7 @@ public:
         else
         {
             auto iter = this->_begin_impl<IsExplicitConst, Level>();
-            iter += this->total_size<Level>();
+            iter += this->size<Level>();
             return iter;
         }
     }
@@ -337,7 +337,7 @@ public:
     template<typename Function>
     void traverse(Function fn) const
     {
-        const size_t size = this->total_size();
+        const size_t size = this->size();
         for (size_t i = 0; i < size; ++i)
             fn(*(this->base_ptr_ + i));
     }
@@ -359,7 +359,7 @@ public:
     template<typename Iter>
     void copy_to(Iter dst) const
     {
-        this->copy_to(dst, this->total_size());
+        this->copy_to(dst, this->size());
     }
 
     // copy data from source given size, assuming no aliasing
@@ -380,7 +380,7 @@ public:
     template<typename Iter>
     void copy_from(Iter src) const
     {
-        this->copy_from(src, this->total_size());
+        this->copy_from(src, this->size());
     }
 
 };
@@ -433,7 +433,7 @@ public:
     }
     _regular_elem_iter<_elem_t> element_end() const
     {
-        return {this->base_ptr_ + this->total_size() * stride(), stride()};
+        return {this->base_ptr_ + this->size() * stride(), stride()};
     }
     _regular_elem_const_iter<_elem_t> element_cbegin() const
     {
@@ -441,7 +441,7 @@ public:
     }
     _regular_elem_const_iter<_elem_t> element_cend() const
     {
-        return {this->base_ptr_ + this->total_size() * stride(), stride()};
+        return {this->base_ptr_ + this->size() * stride(), stride()};
     }
 
     template<bool IsExplicitConst, size_t Level>
@@ -471,7 +471,7 @@ public:
         else
         {
             auto iter = this->_begin_impl<IsExplicitConst, Level>();
-            iter += this->total_size<Level>();
+            iter += this->size<Level>();
             return iter;
         }
     }
@@ -501,7 +501,7 @@ public:
     template<typename Function>
     void traverse(Function fn) const
     {
-        const size_t    size   = this->total_size();
+        const size_t    size   = this->size();
         const ptrdiff_t stride = this->stride();
         for (size_t i = 0; i < size; ++i)
             fn(*(this->base_ptr_ + i * stride));
@@ -525,7 +525,7 @@ public:
     template<typename Iter>
     void copy_to(Iter dst) const
     {
-        this->copy_to(dst, this->total_size());
+        this->copy_to(dst, this->size());
     }
 
     // copy data from source given size, assuming no aliasing
@@ -547,7 +547,7 @@ public:
     template<typename Iter>
     void copy_from(Iter src) const
     {
-        this->copy_from(src, this->total_size());
+        this->copy_from(src, this->size());
     }
 
 };
@@ -668,7 +668,7 @@ public:
             constexpr _view_type iter_type_v =
                 _identify_view_iter_type_v<this->_non_scalar_indexers_table[Level], _indexers_t>;
             if constexpr (iter_type_v == _view_type::regular)
-                iter += this->total_size<Level>();                  // add total_size if regular
+                iter += this->size<Level>();                  // add size if regular
             else
                 iter._get_indices_ref()[0] = this->dimension<0>();   // modify indices[0] if irregular
             return iter;                                             // return the iterator

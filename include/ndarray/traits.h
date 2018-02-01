@@ -329,6 +329,11 @@ struct _identify_access_type_impl<irregular_view<T, IndexerTuple>>
 {
     static constexpr _access_type value = _access_type::traverse;
 };
+template<typename T>
+struct _identify_access_type_impl<range_view<T>>
+{
+    static constexpr _access_type value = _access_type::iterator;
+};
 template<typename Array>
 struct _identify_access_type : 
     _identify_access_type_impl<remove_cvref_t<Array>> {};

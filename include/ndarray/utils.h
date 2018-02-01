@@ -95,7 +95,7 @@ constexpr inline bool _check_bound_vector(Indices indices, Size size)
 template<size_t I, typename Array1, typename... Arrays>
 void _size_of_arrays_impl(size_t* sizes, const Array1& arr1, const Arrays&... arrs)
 {
-    sizes[I] = arr1.total_size();
+    sizes[I] = arr1.size();
     if constexpr (sizeof...(Arrays) > 0)
         _size_of_arrays_impl<I + 1>(sizes, arrs...);
 }
