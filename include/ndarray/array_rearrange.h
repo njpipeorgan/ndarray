@@ -9,13 +9,13 @@ namespace ndarray
 {
 
 template<size_t NewDepth, typename Array>
-inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, std::integral_constant<_access_type, _access_type::vector>)
+inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, std::integral_constant<access_type, access_type::vector>)
 {
     using elem_t = typename remove_cvref_t<Array>::_elem_t;
     return array<elem_t, NewDepth>(get_vector(std::forward<Array>(src)), dims);
 }
 template<size_t NewDepth, typename Array>
-inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, std::integral_constant<_access_type, _access_type::iterator>)
+inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, std::integral_constant<access_type, access_type::iterator>)
 {
     using elem_t = typename remove_cvref_t<Array>::_elem_t;
     const size_t src_size  = src.size();
@@ -24,10 +24,10 @@ inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, std::i
     return array<elem_t, NewDepth>(std::move(data), dims);
 }
 template<size_t NewDepth, typename Array>
-inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, std::integral_constant<_access_type, _access_type::traverse>)
+inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, std::integral_constant<access_type, access_type::traverse>)
 {
     return _reshape_impl<NewDepth>(
-        std::forward<Array>(src), dims, std::integral_constant<_access_type, _access_type::iterator>{});
+        std::forward<Array>(src), dims, std::integral_constant<access_type, access_type::iterator>{});
 }
 
 // reshape an array to a new set of dimensions
@@ -35,7 +35,7 @@ template<size_t NewDepth, typename Array>
 inline auto reshape(Array&& src, std::array<size_t, NewDepth> dims)
 {
     auto ret = _reshape_impl<NewDepth>(
-        std::forward<Array>(src), dims, std::integral_constant<_access_type, _identify_access_type_v<Array>>{});
+        std::forward<Array>(src), dims, std::integral_constant<access_type, identify_access_type_v<Array>>{});
     ret._check_size();
     return ret;
 }
@@ -45,7 +45,7 @@ template<typename Array>
 inline auto flatten(Array&& src)
 {
     auto ret = _reshape_impl<1>(
-        std::forward<Array>(src), {src.size()}, std::integral_constant<_access_type, _identify_access_type_v<Array>>{});
+        std::forward<Array>(src), {src.size()}, std::integral_constant<access_type, identify_access_type_v<Array>>{});
     NDARRAY_ASSERT(ret._check_size()); // no necessary
     return ret;
 }
@@ -77,7 +77,7 @@ inline auto partition(Array&& src, std::array<size_t, PartDepth> part_dims)
     }
 
     auto ret = _reshape_impl<new_depth_v>(
-        std::forward<Array>(src), new_dims, std::integral_constant<_access_type, _identify_access_type_v<Array>>{});
+        std::forward<Array>(src), new_dims, std::integral_constant<access_type, identify_access_type_v<Array>>{});
     NDARRAY_ASSERT(ret._check_size()); // not necessary
     return ret;
 }

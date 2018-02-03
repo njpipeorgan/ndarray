@@ -23,7 +23,7 @@ namespace ndarray
 //   e.g. {all, scalar, all}, {regular, all}, {irregular, scalar}
 // 
 //
-// View type are derived by _derive_view_type_t based on indexer types.
+// View type are derived by derive_view_type_t based on indexer types.
 //
 // typename T (_elem_t) reflects the constness of elements in the view, 
 // which is automatically derived from the constness of the base array.
@@ -46,13 +46,14 @@ public:
     using _base_ptr_t      = _elem_t*;
     using _base_dims_t     = const size_t*;
     static constexpr bool   _is_const_v        = std::is_const_v<_elem_t>;
-    static constexpr size_t _depth_v           = _indexer_tuple_depth_v<_indexers_t>;
+    static constexpr size_t _depth_v           = indexer_tuple_depth_v<_indexers_t>;
     static constexpr size_t _base_depth_v      = std::tuple_size_v<_indexers_t>;
     static constexpr std::array<size_t, _depth_v>
         _non_scalar_indexers_table = _make_non_scalar_indexer_table<_indexers_t>();
     static constexpr size_t _stride_depth_v    = _non_scalar_indexers_table[_depth_v - 1] + 1;
     static constexpr bool   _has_base_stride_v = (_stride_depth_v != _base_depth_v);
-    using _base_stride_t   = std::conditional_t<_has_base_stride_v, size_t, _empty_struct>;
+    using _base_stride_t   = std::conditional_t<_has_base_stride_v, size_t, empty_struct>;
+    static_assert(_depth_v > 0);
 
 public:
     _base_ptr_t          base_ptr_;       // the base pointer for element accessing
@@ -61,20 +62,20 @@ public:
     const _base_stride_t base_stride_;    // base stride between elements
 
 public:
-    explicit array_view_base(_base_ptr_t base_ptr, _base_dims_t base_dims,
-                             _indexers_t indexers, size_t base_stride ={}) :
+    array_view_base(_base_ptr_t base_ptr, _base_dims_t base_dims,
+                    _indexers_t indexers, size_t base_stride ={}) :
         base_ptr_{base_ptr}, base_dims_{base_dims},
         indexers_{indexers}, base_stride_{base_stride} {}
 
-    _base_ptr_t _get_base_ptr() const
+    _const_elem_t* base_ptr() const
     {
         return base_ptr_;
     }
-    _base_ptr_t& _get_base_ptr_ref()
+    _base_ptr_t& _base_ptr_ref()
     {
         return base_ptr_;
     }
-    const _base_ptr_t& _get_base_ptr_ref() const
+    const _base_ptr_t& _base_ptr_ref() const
     {
         return base_ptr_;
     }
@@ -150,18 +151,18 @@ public:
     }
 
     template<typename SpanTuple>
-    _derive_view_type_t<_elem_t, _indexers_t, SpanTuple>
-        tuple_part_view(SpanTuple&& spans) const
+    derive_view_type_t<_elem_t, _indexers_t, SpanTuple>
+        tuple_vpart(SpanTuple&& spans) const
     {
         return get_collapsed_view(
             base_ptr_, base_dims_, indexers_, std::forward<decltype(spans)>(spans));
     }
 
     template<typename... Spans>
-    _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
-        part_view(Spans&&... spans) const
+    derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+        vpart(Spans&&... spans) const
     {
-        return tuple_part_view(std::forward_as_tuple(spans...));
+        return tuple_vpart(std::forward_as_tuple(spans...));
     }
 
     // check whether having same dimensions with another array, starting at specific levels
@@ -173,7 +174,7 @@ public:
         else if constexpr (MyStartLevel == _depth_v - 1 && OtherStartLevel == OtherArray::_depth_v - 1)
             return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>();
         else
-            return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>() && 
+            return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>() &&
             has_same_dimensions<MyStartLevel + 1, OtherStartLevel + 1>(other);
     }
 
@@ -188,7 +189,7 @@ public:
         else
             return _base_dimension<LastBaseLevel - 1>() * _total_base_size<LastBaseLevel - 1, FirstBaseLevel>();
     }
-    
+
     _elem_t& _base_at(size_t pos) const
     {
         if constexpr (!_has_base_stride_v)
@@ -244,11 +245,11 @@ public:
     static constexpr bool   _is_const_v   = _my_base::_is_const_v;
     static constexpr size_t _depth_v      = _my_base::_depth_v;
     static constexpr size_t _base_depth_v = _my_base::_base_depth_v;
-    static constexpr _view_type _my_view_type_v = _view_type::simple;
+    static constexpr view_type _my_view_type_v = view_type::simple;
 
 public:
-    explicit simple_view(_base_ptr_t base_ptr, _base_dims_t base_dims,
-                         _indexers_t indexers, size_t) :
+    simple_view(_base_ptr_t base_ptr, _base_dims_t base_dims,
+                _indexers_t indexers, size_t) :
         _my_base{base_ptr, base_dims, indexers} {}
 
     template<typename Other>
@@ -263,19 +264,19 @@ public:
         return 1;
     }
 
-    _simple_elem_iter<_elem_t> element_begin() const
+    simple_elem_iter<_elem_t> element_begin() const
     {
         return {this->base_ptr_};
     }
-    _simple_elem_iter<_elem_t> element_end() const
+    simple_elem_iter<_elem_t> element_end() const
     {
         return {this->base_ptr_ + this->size()};
     }
-    _simple_elem_const_iter<_elem_t> element_cbegin() const
+    simple_elem_const_iter<_elem_t> element_cbegin() const
     {
         return {this->base_ptr_};
     }
-    _simple_elem_const_iter<_elem_t> element_cend() const
+    simple_elem_const_iter<_elem_t> element_cend() const
     {
         return {this->base_ptr_ + this->size()};
     }
@@ -292,8 +293,8 @@ public:
         {
             size_t ptr_stride = this->_total_base_size<
                 _base_depth_v, this->_non_scalar_indexers_table[Level - 1] + 1>();
-            auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
-            return _regular_view_iter<decltype(sub_view), IsExplicitConst>{std::move(sub_view), ptr_stride};
+            auto   sub_view   = this->tuple_vpart(repeat_tuple_t<Level, size_t>{});
+            return regular_view_iter<decltype(sub_view), IsExplicitConst>{std::move(sub_view), ptr_stride};
         }
     }
     template<bool IsExplicitConst, size_t Level>
@@ -401,11 +402,11 @@ public:
     static constexpr bool   _is_const_v   = _my_base::_is_const_v;
     static constexpr size_t _depth_v      = _my_base::_depth_v;
     static constexpr size_t _base_depth_v = _my_base::_base_depth_v;
-    static constexpr _view_type _my_view_type_v = _view_type::regular;
+    static constexpr view_type _my_view_type_v = view_type::regular;
 
 public:
-    explicit regular_view(_base_ptr_t base_ptr, _base_dims_t base_dims,
-                          _indexers_t indexers, size_t base_stride) :
+    regular_view(_base_ptr_t base_ptr, _base_dims_t base_dims,
+                 _indexers_t indexers, size_t base_stride) :
         _my_base{base_ptr, base_dims, indexers, base_stride} {}
 
     template<typename Other>
@@ -427,19 +428,19 @@ public:
             return 1;
     }
 
-    _regular_elem_iter<_elem_t> element_begin() const
+    regular_elem_iter<_elem_t> element_begin() const
     {
         return {this->base_ptr_, stride()};
     }
-    _regular_elem_iter<_elem_t> element_end() const
+    regular_elem_iter<_elem_t> element_end() const
     {
         return {this->base_ptr_ + this->size() * stride(), stride()};
     }
-    _regular_elem_const_iter<_elem_t> element_cbegin() const
+    regular_elem_const_iter<_elem_t> element_cbegin() const
     {
         return {this->base_ptr_, stride()};
     }
-    _regular_elem_const_iter<_elem_t> element_cend() const
+    regular_elem_const_iter<_elem_t> element_cend() const
     {
         return {this->base_ptr_ + this->size() * stride(), stride()};
     }
@@ -456,8 +457,8 @@ public:
         {
             size_t ptr_stride = this->_total_base_size<
                 _base_depth_v, this->_non_scalar_indexers_table[Level - 1] + 1>();
-            auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
-            return _regular_view_iter<decltype(sub_view), IsExplicitConst>{std::move(sub_view), ptr_stride};
+            auto   sub_view   = this->tuple_vpart(repeat_tuple_t<Level, size_t>{});
+            return regular_view_iter<decltype(sub_view), IsExplicitConst>{std::move(sub_view), ptr_stride};
         }
     }
     template<bool IsExplicitConst, size_t Level>
@@ -568,11 +569,11 @@ public:
     static constexpr bool   _is_const_v   = _my_base::_is_const_v;
     static constexpr size_t _depth_v      = _my_base::_depth_v;
     static constexpr size_t _base_depth_v = _my_base::_base_depth_v;
-    static constexpr _view_type _my_view_type_v = _view_type::irregular;
+    static constexpr view_type _my_view_type_v = view_type::irregular;
 
 public:
-    explicit irregular_view(_base_ptr_t base_ptr, _base_dims_t base_dims,
-                            _indexers_t indexers, size_t base_stride) :
+    irregular_view(_base_ptr_t base_ptr, _base_dims_t base_dims,
+                   _indexers_t indexers, size_t base_stride) :
         _my_base{base_ptr, base_dims, indexers, base_stride} {}
 
     template<typename Other>
@@ -590,25 +591,25 @@ public:
             return 1;
     }
 
-    _irregular_elem_iter<irregular_view> element_begin()
+    irregular_elem_iter<irregular_view> element_begin()
     {
         // set all indices to zero
         std::array<size_t, _depth_v> indices{};
         return {*this, indices};
     }
-    _irregular_elem_iter<irregular_view> element_end()
+    irregular_elem_iter<irregular_view> element_end()
     {
         // set the first index to dimension<0>(), set all other indices to zero
         std::array<size_t, _depth_v> indices{this->dimension<0>()};
         return {*this, indices};
     }
-    _irregular_elem_const_iter<irregular_view> element_cbegin() const
+    irregular_elem_const_iter<irregular_view> element_cbegin() const
     {
         // set all indices to zero
         std::array<size_t, _depth_v> indices{};
         return {*this, indices};
     }
-    _irregular_elem_const_iter<irregular_view> element_cend() const
+    irregular_elem_const_iter<irregular_view> element_cend() const
     {
         // set the first index to dimension<0>(), set all other indices to zero
         std::array<size_t, _depth_v> indices{this->dimension<0>()};
@@ -621,16 +622,16 @@ public:
     { // is used if the iterator on this level is regular
         size_t ptr_stride = this->_total_base_size<
             _base_depth_v, this->_non_scalar_indexers_table[Level - 1] + 1>();
-        auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
-        return _regular_view_iter<decltype(sub_view), IsExplicitConst>{sub_view, ptr_stride};
+        auto   sub_view   = this->tuple_vpart(repeat_tuple_t<Level, size_t>{});
+        return regular_view_iter<decltype(sub_view), IsExplicitConst>{sub_view, ptr_stride};
     }
     template<size_t Level>
     auto _irregular_begin_impl() const
     { // is used if the iterator on this level is irregular
         size_t ptr_stride = this->_total_base_size<
             _base_depth_v, this->_non_scalar_indexers_table[Level - 1] + 1>();
-        auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
-        using iter_type = _derive_view_iter_type_t<
+        auto   sub_view   = this->tuple_vpart(repeat_tuple_t<Level, size_t>{});
+        using iter_type = derive_view_iter_type_t<
             this->_non_scalar_indexers_table[Level], _indexers_t, irregular_view, decltype(sub_view), false>;
         return iter_type{*this, sub_view, ptr_stride};
     }
@@ -645,10 +646,10 @@ public:
         }
         else
         {
-            constexpr _view_type iter_type_v =
+            constexpr view_type iter_type_v =
                 _identify_view_iter_type_v<this->_non_scalar_indexers_table[Level], _indexers_t>;
-            static_assert(iter_type_v == _view_type::regular || iter_type_v == _view_type::irregular);
-            if constexpr (iter_type_v == _view_type::regular)
+            static_assert(iter_type_v == view_type::regular || iter_type_v == view_type::irregular);
+            if constexpr (iter_type_v == view_type::regular)
                 return this->_regular_begin_impl<IsExplicitConst, Level>();
             else
                 return this->_irregular_begin_impl<IsExplicitConst, Level>();
@@ -665,9 +666,9 @@ public:
         else
         {
             auto iter = this->_begin_impl<IsExplicitConst, Level>(); // get begin as the iterator
-            constexpr _view_type iter_type_v =
+            constexpr view_type iter_type_v =
                 _identify_view_iter_type_v<this->_non_scalar_indexers_table[Level], _indexers_t>;
-            if constexpr (iter_type_v == _view_type::regular)
+            if constexpr (iter_type_v == view_type::regular)
                 iter += this->size<Level>();                  // add size if regular
             else
                 iter._get_indices_ref()[0] = this->dimension<0>();   // modify indices[0] if irregular
@@ -744,7 +745,7 @@ protected:
     void traverse_impl(Function fn, size_t offset = 0) const
     {
         const size_t new_offset = offset * this->_base_dimension<BC>();
-        if constexpr (this->_non_scalar_indexers_table[LC] > BC) // encounter _scalar_indexer
+        if constexpr (this->_non_scalar_indexers_table[LC] > BC) // encounter scalar_indexer
         {
             traverse_impl<BC + 1, LC, Function>(fn, new_offset);
         }

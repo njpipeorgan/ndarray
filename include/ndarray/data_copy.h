@@ -12,8 +12,8 @@ inline void aliased_data_copy(const SrcArray& src, DstArray& dst, size_t size)
 {
     using src_t = remove_cvref_t<SrcArray>;
     using dst_t = remove_cvref_t<DstArray>;
-    constexpr _view_type src_type_v = src_t::_my_view_type_v;
-    constexpr _view_type dst_type_v = dst_t::_my_view_type_v;
+    constexpr view_type src_type_v = src_t::_my_view_type_v;
+    constexpr view_type dst_type_v = dst_t::_my_view_type_v;
 
     using temp_type = std::conditional_t<
         sizeof(typename src_t::_elem_t{}) < sizeof(typename dst_t::_elem_t{}),
@@ -29,16 +29,16 @@ inline void no_alias_data_copy(const SrcArray& src, DstArray& dst, size_t size)
 {
     using src_t = remove_cvref_t<SrcArray>;
     using dst_t = remove_cvref_t<DstArray>;
-    constexpr _view_type src_type_v = src_t::_my_view_type_v;
-    constexpr _view_type dst_type_v = dst_t::_my_view_type_v;
+    constexpr view_type src_type_v = src_t::_my_view_type_v;
+    constexpr view_type dst_type_v = dst_t::_my_view_type_v;
 
-    if constexpr (src_type_v == _view_type::array)
+    if constexpr (src_type_v == view_type::array)
         dst.copy_from(src.data(), size);
-    else if constexpr (dst_type_v == _view_type::array)
+    else if constexpr (dst_type_v == view_type::array)
         src.copy_to(dst.data(), size);
-    else if constexpr (src_type_v != _view_type::irregular)
+    else if constexpr (src_type_v != view_type::irregular)
         dst.copy_from(src.element_begin(), size);
-    else if constexpr (dst_type_v != _view_type::irregular)
+    else if constexpr (dst_type_v != view_type::irregular)
         src.copy_to(dst.element_begin(), size);
     else // both arrays are irregular_array_view
         aliased_data_copy(src, dst, size);
@@ -49,33 +49,33 @@ inline void data_copy(const SrcArray& src, DstArray& dst)
 {
     using src_t = remove_cvref_t<SrcArray>;
     using dst_t = remove_cvref_t<DstArray>;
-    constexpr _view_type src_type_v = src_t::_my_view_type_v;
-    constexpr _view_type dst_type_v = dst_t::_my_view_type_v;
+    constexpr view_type src_type_v = src_t::_my_view_type_v;
+    constexpr view_type dst_type_v = dst_t::_my_view_type_v;
 
     assert(src.has_same_dimensions(dst));
-    size_t size = src_type_v == _view_type::array ? src.size() : dst.size();
+    size_t size = src_type_v == view_type::array ? src.size() : dst.size();
 
     if (src._identifier_ptr() != dst._identifier_ptr())
     {
         no_alias_data_copy(src, dst, size);
     }
-    else if constexpr (src_type_v == _view_type::array &&
-                       dst_type_v == _view_type::array) // no copy will happen
+    else if constexpr (src_type_v == view_type::array &&
+                       dst_type_v == view_type::array) // no copy will happen
     {
     }
-    else if constexpr (src_type_v == _view_type::array     ||
-                       dst_type_v == _view_type::array     ||
-                       src_type_v == _view_type::irregular ||
-                       dst_type_v == _view_type::irregular)
+    else if constexpr (src_type_v == view_type::array     ||
+                       dst_type_v == view_type::array     ||
+                       src_type_v == view_type::irregular ||
+                       dst_type_v == view_type::irregular)
     {
         aliased_data_copy(src, dst, size);
     }
     else
     {
-        const auto src_ptr = src._get_base_ptr();
-        const auto dst_ptr = dst._get_base_ptr();
-        if constexpr (src_type_v == _view_type::simple &&
-                      dst_type_v == _view_type::simple)
+        const auto src_ptr = src.base_ptr();
+        const auto dst_ptr = dst.base_ptr();
+        if constexpr (src_type_v == view_type::simple &&
+                      dst_type_v == view_type::simple)
         {
             if (src_ptr + size <= dst_ptr ||
                 dst_ptr + size <= src_ptr)
@@ -83,8 +83,8 @@ inline void data_copy(const SrcArray& src, DstArray& dst)
             else
                 aliased_data_copy(src, dst, size);
         }
-        else if (src_type_v == _view_type::regular &&
-                 dst_type_v == _view_type::regular &&
+        else if (src_type_v == view_type::regular &&
+                 dst_type_v == view_type::regular &&
                  src.stride() == dst.stride()) // two regular_view with the same stride
         {
             const auto stride = src.stride();

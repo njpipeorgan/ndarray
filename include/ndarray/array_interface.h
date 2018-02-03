@@ -10,16 +10,16 @@ namespace ndarray
 //
 // three interfaces for accessing the data of an array / array view
 //
-// _access_type::vector :
+// access_type::vector :
 //     get_vector(src)
 //
-// _access_type::iterator : 
+// access_type::iterator : 
 //     begin(src),         end(src),
 //     cbegin(src),        cend(src)
 //     begin<Level>(src),  end<Level>(src),
 //     cbegin<Level>(src), cend<Level>(src)
 //
-// _access_type::traverse : 
+// access_type::traverse : 
 //     traverse(fn, src)
 //
 

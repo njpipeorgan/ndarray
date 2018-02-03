@@ -38,32 +38,32 @@ constexpr bool _always_false_v = false;
 
 
 // constructed from arbitrary arguments and gives nothing
-struct _empty_struct
+struct empty_struct
 {
     template<typename... T>
-    _empty_struct(T...) {}
+    empty_struct(T...) {}
 };
 
 
 // tuple of T repeated n times
 template<size_t N, typename T, typename Tuple = std::tuple<>>
-struct _repeat_tuple;
+struct repeat_tuple;
 template<size_t N, typename T, typename... Ts>
-struct _repeat_tuple<N, T, std::tuple<Ts...>>
+struct repeat_tuple<N, T, std::tuple<Ts...>>
 {
-    using type = typename _repeat_tuple<N - 1, T, std::tuple<Ts..., T>>::type;
+    using type = typename repeat_tuple<N - 1, T, std::tuple<Ts..., T>>::type;
 };
 template<typename T, typename... Ts>
-struct _repeat_tuple<0, T, std::tuple<Ts...>>
+struct repeat_tuple<0, T, std::tuple<Ts...>>
 {
     using type = std::tuple<Ts...>;
 };
 template<size_t N, typename T>
-using _repeat_tuple_t = typename _repeat_tuple<N, T>::type;
+using repeat_tuple_t = typename repeat_tuple<N, T>::type;
 
 
 template<typename Return, typename X, typename Y>
-inline Return _add_if_negative(X x, Y y)
+constexpr inline Return _add_if_negative(X x, Y y)
 {
     if constexpr (std::is_unsigned_v<X>)
         return Return(x);
@@ -72,7 +72,7 @@ inline Return _add_if_negative(X x, Y y)
 }
 
 template<typename Return, typename X, typename Y>
-inline Return _add_if_non_positive(X x, Y y)
+constexpr inline Return _add_if_non_positive(X x, Y y)
 {
     return (x > X(0)) ? Return(x) : Return(x) + Return(y);
 }
@@ -93,7 +93,7 @@ constexpr inline bool _check_bound_vector(Indices indices, Size size)
 }
 
 template<size_t I, typename Array1, typename... Arrays>
-void _size_of_arrays_impl(size_t* sizes, const Array1& arr1, const Arrays&... arrs)
+inline void _size_of_arrays_impl(size_t* sizes, const Array1& arr1, const Arrays&... arrs)
 {
     sizes[I] = arr1.size();
     if constexpr (sizeof...(Arrays) > 0)
@@ -101,7 +101,7 @@ void _size_of_arrays_impl(size_t* sizes, const Array1& arr1, const Arrays&... ar
 }
 
 template<typename... Arrays>
-std::array<size_t, sizeof...(Arrays)> size_of_arrays(const Arrays&... arrs)
+inline std::array<size_t, sizeof...(Arrays)> size_of_arrays(const Arrays&... arrs)
 {
     std::array<size_t, sizeof...(Arrays)> sizes;
     _size_of_arrays_impl<0>(sizes.data(), arrs...);

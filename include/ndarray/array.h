@@ -20,8 +20,8 @@ public:
     static constexpr size_t _depth_v = Depth;
     using _data_t     = std::vector<T>;
     using _dims_t     = std::array<size_t, _depth_v>;
-    using _indexers_t = _n_all_indexer_tuple_t<_depth_v>;
-    static constexpr _view_type _my_view_type_v = _view_type::array;
+    using _indexers_t = n_all_indexer_tuple_t<_depth_v>;
+    static constexpr view_type _my_view_type_v = view_type::array;
     static_assert(_depth_v > 0);
 
 public:
@@ -35,7 +35,7 @@ public:
         resize();
     }
 
-    template<typename View, _view_type = View::_my_view_type_v>
+    template<typename View, view_type = View::_my_view_type_v>
     array(const View& other) :
         dims_{other.dimensions()}
     {
@@ -60,7 +60,7 @@ public:
     
 
     // copy data from another view, assuming identical dimensions
-    template<typename View, _view_type = View::_my_view_type_v>
+    template<typename View, view_type = View::_my_view_type_v>
     _my_type& operator=(const View& other)
     {
         data_copy(other, *this);
@@ -102,36 +102,42 @@ public:
         static_assert(I < _depth_v);
         return dims_[I];
     }
+    
+    // array of dimensions
+    std::array<size_t, _depth_v> dimensions() const
+    {
+        return dims_;
+    }
 
     const size_t* _identifier_ptr() const
     {
         return dims_.data();
     }
 
-    template<typename... Ints, typename = std::enable_if_t<sizeof...(Ints) == _depth_v && _is_all_ints_v<Ints...>>>
+    template<typename... Ints, std::enable_if_t<sizeof...(Ints) == _depth_v && is_all_ints_v<Ints...>, int> = 0>
     _elem_t& operator()(Ints&&... ints)
     {
         return this->at(std::forward<decltype(ints)>(ints)...);
     }
 
-    template<typename... Ints, typename = std::enable_if_t<sizeof...(Ints) == _depth_v && _is_all_ints_v<Ints...>>>
+    template<typename... Ints, std::enable_if_t<sizeof...(Ints) == _depth_v && is_all_ints_v<Ints...>, int> = 0>
     _elem_t& operator()(Ints&&... ints) const
     {
         return this->at(std::forward<decltype(ints)>(ints)...);
     }
 
-    template<typename... Spans, typename = std::enable_if_t<sizeof...(Spans) != _depth_v || !_is_all_ints_v<Spans...>>>
-    _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+    template<typename... Spans, std::enable_if_t<sizeof...(Spans) != _depth_v || !is_all_ints_v<Spans...>, int> = 0>
+    derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
         operator()(Spans&&... spans)
     {
-        return this->part_view(std::forward<decltype(spans)>(spans)...);
+        return this->vpart(std::forward<decltype(spans)>(spans)...);
     }
 
-    template<typename... Spans, typename = std::enable_if_t<sizeof...(Spans) != _depth_v || !_is_all_ints_v<Spans...>>>
-    _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+    template<typename... Spans, std::enable_if_t<sizeof...(Spans) != _depth_v || !is_all_ints_v<Spans...>, int> = 0>
+    derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
         operator()(Spans&&... spans) const
     {
-        return this->part_view(std::forward<decltype(spans)>(spans)...);
+        return this->vpart(std::forward<decltype(spans)>(spans)...);
     }
 
     // indexing with a tuple/array of integers
@@ -173,27 +179,27 @@ public:
         return data_.data();
     }
 
-    _simple_elem_iter<_elem_t> element_begin()
+    simple_elem_iter<_elem_t> element_begin()
     {
         return {data()};
     }
-    _simple_elem_iter<_elem_t> element_end()
+    simple_elem_iter<_elem_t> element_end()
     {
         return {data() + size()};
     }
-    _simple_elem_const_iter<_elem_t> element_cbegin() const
+    simple_elem_const_iter<_elem_t> element_cbegin() const
     {
         return {data()};
     }
-    _simple_elem_const_iter<_elem_t> element_cend() const
+    simple_elem_const_iter<_elem_t> element_cend() const
     {
         return data() + size();
     }
-    _simple_elem_const_iter<_elem_t> element_begin() const
+    simple_elem_const_iter<_elem_t> element_begin() const
     {
         return element_cbegin();
     }
-    _simple_elem_const_iter<_elem_t> element_end() const
+    simple_elem_const_iter<_elem_t> element_end() const
     {
         return element_cend();
     }
@@ -209,8 +215,8 @@ public:
         else
         {
             size_t ptr_stride = this->_total_size_impl<_depth_v, Level>();
-            auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
-            return _regular_view_iter<decltype(sub_view), IsExplicitConst>{std::move(sub_view), ptr_stride};
+            auto   sub_view   = this->tuple_vpart(repeat_tuple_t<Level, size_t>{});
+            return regular_view_iter<decltype(sub_view), IsExplicitConst>{std::move(sub_view), ptr_stride};
         }
     }
     template<bool IsExplicitConst, size_t Level>
@@ -239,8 +245,8 @@ public:
         else
         {
             size_t ptr_stride = this->_total_size_impl<_depth_v, Level>();
-            auto   sub_view   = this->tuple_part_view(_repeat_tuple_t<Level, size_t>{});
-            return _regular_view_iter<decltype(sub_view), IsExplicitConst>{std::move(sub_view), ptr_stride};
+            auto   sub_view   = this->tuple_vpart(repeat_tuple_t<Level, size_t>{});
+            return regular_view_iter<decltype(sub_view), IsExplicitConst>{std::move(sub_view), ptr_stride};
         }
     }
     template<bool IsExplicitConst, size_t Level>
@@ -300,33 +306,33 @@ public:
     }
 
     template<typename SpanTuple>
-    _derive_view_type_t<const _elem_t, _indexers_t, SpanTuple>
-        tuple_part_view(SpanTuple&& spans) const
+    derive_view_type_t<const _elem_t, _indexers_t, SpanTuple>
+        tuple_vpart(SpanTuple&& spans) const
     {
         return get_collapsed_view(
             data(), dims_.data(), _indexers_t{}, std::forward<decltype(spans)>(spans));
     }
 
     template<typename SpanTuple>
-    _derive_view_type_t<_elem_t, _indexers_t, SpanTuple>
-        tuple_part_view(SpanTuple&& spans)
+    derive_view_type_t<_elem_t, _indexers_t, SpanTuple>
+        tuple_vpart(SpanTuple&& spans)
     {
         return get_collapsed_view(
             data(), dims_.data(), _indexers_t{}, std::forward<decltype(spans)>(spans));
     }
 
     template<typename... Spans>
-    _derive_view_type_t<const _elem_t, _indexers_t, std::tuple<Spans...>>
-        part_view(Spans&&... spans) const
+    derive_view_type_t<const _elem_t, _indexers_t, std::tuple<Spans...>>
+        vpart(Spans&&... spans) const
     {
-        return tuple_part_view(std::forward_as_tuple(spans...));
+        return tuple_vpart(std::forward_as_tuple(spans...));
     }
 
     template<typename... Spans>
-    _derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
-        part_view(Spans&&... spans)
+    derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+        vpart(Spans&&... spans)
     {
-        return tuple_part_view(std::forward_as_tuple(spans...));
+        return tuple_vpart(std::forward_as_tuple(spans...));
     }
 
     template<typename Function>

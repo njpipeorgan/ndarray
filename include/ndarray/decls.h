@@ -8,19 +8,19 @@ namespace ndarray
 template<typename T, size_t Depth>
 class array;
 
-class _all_span;
+class all_span;
 template<typename TFirst, typename TLast>
-class _simple_span;
+class simple_span;
 template<typename TFirst, typename TLast, typename TStep>
-class _regular_span;
+class regular_span;
 template<typename Indices>
-class _irregular_span;
+class irregular_span;
 
-class _scalar_indexer;
-class _all_indexer;
-class _simple_indexer;
-class _regular_indexer;
-class _irregular_indexer;
+class scalar_indexer;
+class all_indexer;
+class simple_indexer;
+class regular_indexer;
+class irregular_indexer;
 
 template<typename T, typename IndexerTuple>
 class array_view_base;
@@ -32,28 +32,28 @@ template<typename T, typename IndexerTuple>
 class irregular_view;
 
 template<typename SubView, bool IsExplicitConst>
-class _regular_view_iter;
+class regular_view_iter;
 template<typename SubView, typename BaseView, bool IsExplicitConst>
-class _irregular_view_iter;
+class irregular_view_iter;
 
 template<typename T, bool IsExplicitConst = false>
-class _simple_elem_iter;
+class simple_elem_iter;
 template<typename T, bool IsExplicitConst = false>
-class _regular_elem_iter;
+class regular_elem_iter;
 template<typename View, bool IsExplicitConst = false>
-class _irregular_elem_iter;
+class irregular_elem_iter;
 
 template<typename T>
-using _simple_elem_const_iter = typename _simple_elem_iter<T, true>;
+using simple_elem_const_iter = typename simple_elem_iter<T, true>;
 template<typename T>
-using _regular_elem_const_iter = typename _regular_elem_iter<T, true>;
+using regular_elem_const_iter = typename regular_elem_iter<T, true>;
 template<typename View>
-using _irregular_elem_const_iter = typename _irregular_elem_iter<View, true>;
+using irregular_elem_const_iter = typename irregular_elem_iter<View, true>;
 
-template<typename T>
+template<typename T, bool IsUnitStep>
 class range_view;
 template<typename T>
-class _range_view_iter;
+class range_view_iter;
 
 
 template<typename SrcArray, typename DstArray>

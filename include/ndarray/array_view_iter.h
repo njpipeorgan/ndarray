@@ -8,7 +8,7 @@ namespace ndarray
 {
 
 //
-// _irregular_indices is a helper class, stores a const reference to 
+// irregular_indices is a helper class, stores a const reference to 
 // a base view (for dimensions) and an array of indices, implementing 
 // random iterator functionalities that operate on indices. 
 //
@@ -17,10 +17,10 @@ namespace ndarray
 //
 
 template<typename ViewCref, size_t IndicesDepth>
-class _irregular_indices
+class irregular_indices
 {
 public:
-    using _my_type     = _irregular_indices;
+    using _my_type     = irregular_indices;
     using _view_cref_t = ViewCref;
     static constexpr int _indices_depth_v = IndicesDepth;
     using _indices_t   = std::array<size_t, _indices_depth_v>;
@@ -30,10 +30,10 @@ protected:
     _indices_t   indices_{}; // zeros by default
 
 public:
-    explicit _irregular_indices(_view_cref_t view_cref, _indices_t indices) : 
+    irregular_indices(_view_cref_t view_cref, _indices_t indices) : 
         view_cref_{view_cref}, indices_{indices} {}
 
-    explicit  _irregular_indices(_view_cref_t view_cref) : 
+    irregular_indices(_view_cref_t view_cref) : 
         view_cref_{view_cref} {}
 
     // get a reference to indices
@@ -46,7 +46,7 @@ public:
     auto* get_base_ptr(size_t stride) const
     {
         size_t pos = view_cref_._get_position(indices_);
-        return view_cref_._get_base_ptr() + pos * stride;
+        return view_cref_.base_ptr() + pos * stride;
     }
     
     // accessing the element the correspondes to the indices
@@ -257,7 +257,7 @@ public:
 
 
 //
-// _regular_view_iter and _irregular_view_iter is the generalized version
+// regular_view_iter and irregular_view_iter is the generalized version
 // of iterators for multi-dimensional arrays. They allow iterations over 
 // various levels. 
 //
@@ -267,38 +267,38 @@ public:
 // indicator of position. Irregular iterators stores extra indices as the 
 // position, and update the base pointer when necessary.
 //
-// Arithmetic operations on _irregular_view_iter have the same complexities 
-// as the helper class _irregular_indices's.
+// Arithmetic operations on irregular_view_iter have the same complexities 
+// as the helper class irregular_indices's.
 //
 
 template<typename SubView, bool IsExplicitConst>
-class _regular_view_iter
+class regular_view_iter
 {
 public:
-    using _my_type      = _regular_view_iter;
+    using _my_type      = regular_view_iter;
     using _sub_view_t   = SubView;
     using _elem_t       = typename _sub_view_t::_elem_t;
     static constexpr bool _is_const_v = IsExplicitConst || std::is_const_v<_elem_t>;
     using _ret_view_t   = std::conditional_t<_is_const_v, typename _sub_view_t::_my_const_t, _sub_view_t>;
     using _base_ptr_t   = typename _ret_view_t::_base_ptr_t;
     using _ptr_stride_t = size_t;
-    using _my_const_t   = _regular_view_iter<_sub_view_t, true>;
+    using _my_const_t   = regular_view_iter<_sub_view_t, true>;
 
 public:
     _ret_view_t   ret_view_;
     _ptr_stride_t ptr_stride_;  // always positive
 
 public:
-    explicit _regular_view_iter(_sub_view_t sub_view, _ptr_stride_t ptr_stride) : 
+    regular_view_iter(_sub_view_t sub_view, _ptr_stride_t ptr_stride) : 
         ret_view_{sub_view}, ptr_stride_{ptr_stride} {}
 
     _base_ptr_t& my_base_ptr_ref()
     {
-        return ret_view_._get_base_ptr_ref();
+        return ret_view_._base_ptr_ref();
     }
     const _base_ptr_t& my_base_ptr_ref() const
     {
-        return ret_view_._get_base_ptr_ref();
+        return ret_view_._base_ptr_ref();
     }
 
     _my_type& operator+=(ptrdiff_t diff)
@@ -387,10 +387,10 @@ public:
 };
 
 template<typename SubView, typename BaseView, bool IsExplicitConst>
-class _irregular_view_iter
+class irregular_view_iter
 {
 public:
-    using _my_type      = _irregular_view_iter;
+    using _my_type      = irregular_view_iter;
     using _sub_view_t   = SubView;
     using _base_view_t  = BaseView;
     using _view_cref_t  = const _base_view_t&;
@@ -400,9 +400,9 @@ public:
     using _base_ptr_t   = typename _ret_view_t::_base_ptr_t;
     using _ptr_stride_t = size_t;
     static constexpr size_t _iter_depth_v = _base_view_t::_depth_v - _sub_view_t::_depth_v;
-    using _indices_t    = _irregular_indices<_view_cref_t, _iter_depth_v>;
+    using _indices_t    = irregular_indices<_view_cref_t, _iter_depth_v>;
     using _indices_array_t = std::array<size_t, _iter_depth_v>;
-    using _my_const_t   = _irregular_view_iter<_sub_view_t, _base_view_t, true>;
+    using _my_const_t   = irregular_view_iter<_sub_view_t, _base_view_t, true>;
 
 public:
     _indices_t          indices_;    // zeros by default internally
@@ -410,7 +410,7 @@ public:
     _ptr_stride_t       ptr_stride_; // always positive
 
 public:
-    explicit _irregular_view_iter(_view_cref_t base_view_cref, _sub_view_t sub_view, _ptr_stride_t ptr_stride) : 
+    irregular_view_iter(_view_cref_t base_view_cref, _sub_view_t sub_view, _ptr_stride_t ptr_stride) : 
         indices_{base_view_cref}, ret_view_{sub_view}, ptr_stride_{ptr_stride} {}
     
     auto& _get_indices_ref()
@@ -427,7 +427,7 @@ public:
 
     void _update_base_ptr() const
     {
-        ret_view_._get_base_ptr_ref() = indices_.get_base_ptr(ptr_stride_);
+        ret_view_._base_ptr_ref() = indices_.get_base_ptr(ptr_stride_);
     }
 
     template<typename Diff>
@@ -488,7 +488,7 @@ public:
     {
         auto new_indices = this->indices_;
         new_indices += diff;
-        ret_view._get_base_ptr_ref() = new_indices.get_base_ptr(ptr_stride_);
+        ret_view._base_ptr_ref() = new_indices.get_base_ptr(ptr_stride_);
         return ret_view;
     }
     ptrdiff_t operator-(const _my_type& other) const
@@ -532,28 +532,27 @@ public:
 //
 // static constexpr bool _is_const_v indicates this constness. 
 //
-// _simple_elem_iter and _regular_elem_iter stores the pointer to the 
+// simple_elem_iter and regular_elem_iter stores the pointer to the 
 // elements and access them by patterns. 
 //
-// Arithmetic operations on _irregular_elem_iter have the same complexities 
-// as the helper class _irregular_indices's.
+// Arithmetic operations on irregular_elem_iter have the same complexities 
+// as the helper class irregular_indices's.
 //
 
 template<typename T, bool IsExplicitConst>
-class _simple_elem_iter
+class simple_elem_iter
 {
 public:
-    using _my_type    = _simple_elem_iter;
+    using _my_type    = simple_elem_iter;
     static constexpr bool _is_const_v = IsExplicitConst || std::is_const_v<T>;
     using _elem_t     = std::conditional_t<_is_const_v, const T, T>;
     using _elem_ptr_t = _elem_t*;
 
 protected:
-    _elem_ptr_t ptr_{nullptr};
+    _elem_ptr_t ptr_;
 
 public:
-    _simple_elem_iter() = default;
-    _simple_elem_iter(_elem_ptr_t ptr) :
+    simple_elem_iter(_elem_ptr_t ptr) :
         ptr_{ptr} {}
 
     _my_type& operator+=(ptrdiff_t diff)
@@ -638,22 +637,21 @@ public:
 };
 
 template<typename T, bool IsExplicitConst>
-class _regular_elem_iter
+class regular_elem_iter
 {
 public:
-    using _my_type    = _regular_elem_iter;
+    using _my_type    = regular_elem_iter;
     using _stride_t   = ptrdiff_t;
     static constexpr bool _is_const_v = IsExplicitConst || std::is_const_v<T>;
     using _elem_t     = std::conditional_t<_is_const_v, const T, T>;
     using _elem_ptr_t = _elem_t*;
 
 protected:
-    _elem_ptr_t ptr_{nullptr};
-    _stride_t   stride_{1};
+    _elem_ptr_t ptr_;
+    _stride_t   stride_;
 
 public:
-    _regular_elem_iter() = default;
-    _regular_elem_iter(_elem_ptr_t ptr, _stride_t stride) :
+    regular_elem_iter(_elem_ptr_t ptr, _stride_t stride) :
         ptr_{ptr}, stride_{stride}
     {
         NDARRAY_ASSERT(stride_ != 0);
@@ -741,10 +739,10 @@ public:
 };
 
 template<typename View, bool IsExplicitConst>
-class _irregular_elem_iter
+class irregular_elem_iter
 {
 public:
-    using _my_type     = _irregular_elem_iter;
+    using _my_type     = irregular_elem_iter;
     using _view_t      = View;
     using _view_cref_t = const _view_t&;
     static constexpr size_t _depth_v    = _view_t::_depth_v;
@@ -752,14 +750,14 @@ public:
     static constexpr bool   _is_const_v = IsExplicitConst || std::is_const_v<_view_elem_t>;
     using _elem_t     = std::conditional_t<_is_const_v, const _view_elem_t, _view_elem_t>;
     using _elem_ptr_t = _elem_t*;
-    using _indices_t   = _irregular_indices<_view_cref_t, _depth_v>;
+    using _indices_t   = irregular_indices<_view_cref_t, _depth_v>;
     using _indices_array_t = std::array<size_t, _depth_v>;
 
 protected:
     _indices_t indices_;
 
 public:
-    _irregular_elem_iter(_view_cref_t view_cref, _indices_array_t indices_array) :
+    irregular_elem_iter(_view_cref_t view_cref, _indices_array_t indices_array) :
         indices_{view_cref, indices_array} {}
 
     template<typename Diff>
