@@ -24,6 +24,25 @@ constexpr inline auto vrange(TLast last)
     return make_range_view(int(0), last);
 }
 
+template<typename TFirst, typename TLast>
+inline auto range(TFirst first, TLast last)
+{
+    return make_array(vrange(first, last));
+}
+
+template<typename TFirst, typename TLast, typename TStep>
+inline auto range(TFirst first, TLast last, TStep step)
+{
+    return make_array(vrange(first, last, step));
+}
+
+template<typename TLast>
+inline auto range(TLast last)
+{
+    return make_array(vrange(last));
+}
+
+
 template<size_t I, typename T, typename Function, typename ArrayTuple>
 inline void _table_impl(T*& data_ptr, Function fn, const ArrayTuple& arrays)
 {

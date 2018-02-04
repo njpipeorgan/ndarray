@@ -23,7 +23,7 @@ class regular_indexer;
 class irregular_indexer;
 
 template<typename T, typename IndexerTuple>
-class array_view_base;
+class part_view_base;
 template<typename T, typename IndexerTuple>
 class simple_view;
 template<typename T, typename IndexerTuple>

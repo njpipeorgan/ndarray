@@ -36,7 +36,7 @@ namespace ndarray
 //
 
 template<typename T, typename IndexerTuple>
-class array_view_base
+class part_view_base
 {
 public:
     using _elem_t          = T;
@@ -62,7 +62,7 @@ public:
     const _base_stride_t base_stride_;    // base stride between elements
 
 public:
-    array_view_base(_base_ptr_t base_ptr, _base_dims_t base_dims,
+    part_view_base(_base_ptr_t base_ptr, _base_dims_t base_dims,
                     _indexers_t indexers, size_t base_stride ={}) :
         base_ptr_{base_ptr}, base_dims_{base_dims},
         indexers_{indexers}, base_stride_{base_stride} {}
@@ -231,11 +231,11 @@ public:
 };
 
 template<typename T, typename IndexerTuple>
-class simple_view : public array_view_base<T, IndexerTuple>
+class simple_view : public part_view_base<T, IndexerTuple>
 {
 public:
     using _my_type         = simple_view;
-    using _my_base         = array_view_base<T, IndexerTuple>;
+    using _my_base         = part_view_base<T, IndexerTuple>;
     using _elem_t          = typename _my_base::_elem_t;
     using _no_const_elem_t = typename _my_base::_no_const_elem_t;
     using _indexers_t      = typename _my_base::_indexers_t;
@@ -387,11 +387,11 @@ public:
 };
 
 template<typename T, typename IndexerTuple>
-class regular_view : public array_view_base<T, IndexerTuple>
+class regular_view : public part_view_base<T, IndexerTuple>
 {
 public:
     using _my_type         = regular_view;
-    using _my_base         = array_view_base<T, IndexerTuple>;
+    using _my_base         = part_view_base<T, IndexerTuple>;
     using _elem_t          = typename _my_base::_elem_t;
     using _no_const_elem_t = typename _my_base::_no_const_elem_t;
     using _indexers_t      = typename _my_base::_indexers_t;
@@ -737,9 +737,6 @@ public:
         this->copy_from(src);
     }
 
-
-
-
 protected:
     template<size_t BC = 0, size_t LC = 0, typename Function>
     void traverse_impl(Function fn, size_t offset = 0) const
@@ -769,5 +766,25 @@ protected:
 
 
 };
+
+
+template<typename T, typename IndexerTuple>
+auto make_array(const simple_view<T, IndexerTuple>& view)
+{
+    using view_t = simple_view<T, IndexerTuple>;
+    return array<typename view_t::_no_const_elem_t, view_t::_depth_v>(view);
+}
+template<typename T, typename IndexerTuple>
+auto make_array(const regular_view<T, IndexerTuple>& view)
+{
+    using view_t = regular_view<T, IndexerTuple>;
+    return array<typename view_t::_no_const_elem_t, view_t::_depth_v>(view);
+}
+template<typename T, typename IndexerTuple>
+auto make_array(const irregular_view<T, IndexerTuple>& view)
+{
+    using view_t = irregular_view<T, IndexerTuple>;
+    return array<typename view_t::_no_const_elem_t, view_t::_depth_v>(view);
+}
 
 }

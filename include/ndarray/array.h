@@ -439,13 +439,6 @@ public:
 };
 
 
-template<typename View>
-auto make_array(View&& view)
-{
-    using view_t = remove_cvref_t<View>;
-    return array<typename view_t::_no_const_elem_t, view_t::_depth_v>(std::forward<View>(view));
-}
-
 template<typename T>
 auto make_array(const std::vector<T>& data)
 {
@@ -457,5 +450,7 @@ auto make_array(std::vector<T>&& data)
 {
     return array<T, 1>(std::move(data), {data.size()});
 }
+
+
 
 }

@@ -37,10 +37,11 @@ enum class view_type
 };
 enum class access_type
 {
-    vector   = 0,   // object that owns a vector
+    vector   = 0, // object that owns a vector
     iterator = 1, // object that implements O(1) element_begin() and element_end()
     traverse = 2  // object that implements O(1) traverse(Fn)
 };
+
 
 template<size_t N, typename ResultTuple = std::tuple<>>
 struct n_all_indexer_tuple;
@@ -341,10 +342,17 @@ template<typename Array>
 constexpr access_type identify_access_type_v = identify_access_type<Array>::value;
 
 
+using vector_access_tag   = std::integral_constant<access_type, access_type::vector>;
+using iterator_access_tag = std::integral_constant<access_type, access_type::iterator>;
+using traverse_access_tag = std::integral_constant<access_type, access_type::traverse>;
+
+template<typename Array>
+using access_type_tag = std::integral_constant<access_type, identify_access_type_v<Array>>;
+
 template<typename Array>
 struct array_elem_impl
 {
-    using type = typename Array::_elem_t;
+    using type = std::remove_cv_t<typename Array::_elem_t>;
 };
 template<typename T>
 struct array_elem_impl<std::vector<T>>
@@ -356,7 +364,6 @@ struct array_elem :
     array_elem_impl<remove_cvref_t<Array>> {};
 template<typename Array>
 using array_elem_t = typename array_elem<Array>::type;
-
 
 template<typename Array>
 struct array_depth_impl
