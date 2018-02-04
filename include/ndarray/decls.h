@@ -23,7 +23,7 @@ class regular_indexer;
 class irregular_indexer;
 
 template<typename T, typename IndexerTuple>
-class part_view_base;
+class array_view_base;
 template<typename T, typename IndexerTuple>
 class simple_view;
 template<typename T, typename IndexerTuple>
@@ -54,7 +54,6 @@ template<typename T, bool IsUnitStep>
 class range_view;
 template<typename T, bool IsUnitStep, bool IsIntegral = std::is_integral_v<T>>
 class range_view_iter;
-
 
 template<typename SrcArray, typename DstArray>
 inline void data_copy(const SrcArray& src, DstArray& dst);

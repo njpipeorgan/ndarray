@@ -519,6 +519,42 @@ public:
         return _elem_t(first_ + pos * step());
     }
 
+    template<typename Span>
+    auto vpart(Span&& span)
+    {
+        static constexpr span_type span_v = classify_span_type_v<Span>;
+        if constexpr (span_v == span_type::all)
+        {
+            return *this;
+        }
+        else if constexpr (span_v == span_type::simple)
+        {
+            // get an offset, and an simple_indexer
+            auto [offset, indexer] = collapse_indexer(size(), all_indexer{}, std::forward<decltype(span)>(span));
+            _elem_t new_first = this->at(offset);
+            size_t  new_size  = indexer.size();
+            return _my_type{new_first, new_size, step()};
+        }
+        else if constexpr (span_v == span_type::regular)
+        {
+            // get an offset, and an regular_indexer
+            auto [offset, indexer] = collapse_indexer(size(), all_indexer{}, std::forward<decltype(span)>(span));
+            _elem_t new_first = this->at(offset);
+            size_t  new_size  = indexer.size();
+            _elem_t new_step  = _elem_t(step() * indexer.step());
+            return range_view<_elem_t, false>{new_first, new_size, new_step}; // will not be unit step
+        }
+        else if constexpr (span_v == span_type::irregular)
+        {
+            size_t new_size  = span.get_size();
+            std::vector<_elem_t> data(new_size);
+            for (size_t i = 0 ; i < new_size; ++i)
+                data[i] = this->at(span.get_index(i, size()));
+            return make_array(std::move(data));
+        }
+    }
+    
+
     template<typename Int, std::enable_if_t<std::is_integral_v<Int>, int> = 0>
     _elem_t operator()(Int i) const
     {
@@ -609,7 +645,6 @@ constexpr inline auto make_range_if_arithmetic(NonArithmetic&& arg)
 {
     return arg;
 }
-
 
 template<typename T, bool IsUnitStep>
 inline auto make_array(const range_view<T, IsUnitStep>& range)

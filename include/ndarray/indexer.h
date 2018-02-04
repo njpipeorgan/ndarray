@@ -139,8 +139,8 @@ std::pair<size_t, indexer_collapsing_t<Indexer, Span>> collapse_indexer(
     size_t base_size, Indexer&& indexer, Span&& span)
 {
     using derived_result = indexer_collapsing<Indexer, Span>;
-    static constexpr span_type    span_v    = derived_result::span_v;
-    static constexpr indexer_type indexer_v = derived_result::indexer_v;
+    constexpr span_type    span_v    = derived_result::span_v;
+    constexpr indexer_type indexer_v = derived_result::indexer_v;
 
     size_t indexer_size = indexer.size(base_size);
 
@@ -210,7 +210,7 @@ std::pair<size_t, indexer_collapsing_t<Indexer, Span>> collapse_indexer(
     }
     if constexpr (span_v == span_type::irregular)
     {
-        auto span_list = span.vector();
+        auto span_list = std::forward<decltype(span)>(span).vector();
         if constexpr (std::is_same_v<decltype(span_list), std::vector<size_t>>)
         {
             for (auto& index : span_list)

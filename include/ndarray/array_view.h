@@ -36,7 +36,7 @@ namespace ndarray
 //
 
 template<typename T, typename IndexerTuple>
-class part_view_base
+class array_view_base
 {
 public:
     using _elem_t          = T;
@@ -62,7 +62,7 @@ public:
     const _base_stride_t base_stride_;    // base stride between elements
 
 public:
-    part_view_base(_base_ptr_t base_ptr, _base_dims_t base_dims,
+    array_view_base(_base_ptr_t base_ptr, _base_dims_t base_dims,
                     _indexers_t indexers, size_t base_stride ={}) :
         base_ptr_{base_ptr}, base_dims_{base_dims},
         indexers_{indexers}, base_stride_{base_stride} {}
@@ -133,6 +133,17 @@ public:
             return size_t(1);
         else
             return dimension<LastLevel - 1>() * size<LastLevel - 1, FirstLevel>();
+    }
+    
+    // automatically calls at() or vpart(), depending on its arguments
+    template<typename... Anys>
+    derive_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>> 
+        operator()(Anys&&... anys) const
+    {
+        if constexpr (sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>)
+            return this->at(std::forward<decltype(anys)>(anys)...);
+        else
+            return this->vpart(std::forward<decltype(anys)>(anys)...);
     }
 
     // indexing with a tuple/array of integers
@@ -231,11 +242,11 @@ public:
 };
 
 template<typename T, typename IndexerTuple>
-class simple_view : public part_view_base<T, IndexerTuple>
+class simple_view : public array_view_base<T, IndexerTuple>
 {
 public:
     using _my_type         = simple_view;
-    using _my_base         = part_view_base<T, IndexerTuple>;
+    using _my_base         = array_view_base<T, IndexerTuple>;
     using _elem_t          = typename _my_base::_elem_t;
     using _no_const_elem_t = typename _my_base::_no_const_elem_t;
     using _indexers_t      = typename _my_base::_indexers_t;
@@ -387,11 +398,11 @@ public:
 };
 
 template<typename T, typename IndexerTuple>
-class regular_view : public part_view_base<T, IndexerTuple>
+class regular_view : public array_view_base<T, IndexerTuple>
 {
 public:
     using _my_type         = regular_view;
-    using _my_base         = part_view_base<T, IndexerTuple>;
+    using _my_base         = array_view_base<T, IndexerTuple>;
     using _elem_t          = typename _my_base::_elem_t;
     using _no_const_elem_t = typename _my_base::_no_const_elem_t;
     using _indexers_t      = typename _my_base::_indexers_t;

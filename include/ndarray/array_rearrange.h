@@ -87,10 +87,11 @@ inline auto partition(Array&& src, size_t part_dim)
     return partition<1>(std::forward<Array>(src), {part_dim});
 }
 
-template<typename ElemT, typename DataArray, typename IndexArray, size_t... I>
-inline ElemT _element_extract_impl(const DataArray& data, const IndexArray& index, size_t pos_0, std::index_sequence<I...>)
+
+template<typename ResultType, typename DataArray, typename IndexArray, size_t... I>
+inline ResultType _element_extract_impl(const DataArray& data, const IndexArray& index, size_t pos_0, std::index_sequence<I...>)
 {
-    return ElemT(data.at(index.at(pos_0, I)...));
+    return data.at(index.at(pos_0, I)...);
 }
 
 // extract elements at index from array
@@ -115,7 +116,7 @@ inline auto element_extract(const DataArray& data, const IndexArray& index)
                 data, index, i, std::make_index_sequence<index_depth_v>{});
     }
 
-    return extracted;
+    return make_array(extracted);
 }
 
 // extract subarray or elements from array

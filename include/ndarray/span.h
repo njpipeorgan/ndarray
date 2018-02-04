@@ -101,7 +101,7 @@ public:
         ptrdiff_t ret = step_ > 0 ?
             _add_if_negative<size_t>(this->first_, size) :
             _add_if_non_positive<size_t>(this->first_ + 1, size) - 1;
-        //NDARRAY_ASSERT(step_ > 0 ? ret <= size : (ret < size || ret == size_t(-1)));
+        NDARRAY_ASSERT(0 <= ret && ret <= ptrdiff_t(size - 1));
         return ret;
     }
     
@@ -111,7 +111,7 @@ public:
         ptrdiff_t ret = step_ > 0 ?
             _add_if_non_positive<size_t>(this->last_, size) :
             _add_if_negative<size_t>(this->last_ + 1, size) - 1;
-        //NDARRAY_ASSERT(step_ > 0 ? ret <= size : (ret < size || ret == size_t(-1)));
+        NDARRAY_ASSERT(step_ > 0 ? (1 <= ret && ret <= ptrdiff_t(size)) : (-1 <= ret && ret <= ptrdiff_t(size - 2)));
         return ret;
     }
     
@@ -124,6 +124,8 @@ public:
 template<typename Indices>
 class irregular_span
 {
+    static_assert(std::is_integral_v<remove_cvref_t<decltype(std::declval<Indices>()[size_t{}])>>);
+
 protected:
     Indices indices_{};
 
@@ -136,7 +138,12 @@ public:
     explicit irregular_span(Indices&& indices) :
         indices_(std::move(indices)) {}
 
-    size_t get_index(size_t i, size_t size)
+    size_t get_size() const
+    {
+        return indices_.size();
+    }
+
+    size_t get_index(size_t i, size_t size) const
     {
         NDARRAY_CHECK_BOUND_SCALAR(i, indices_.size());
         size_t ret = _add_if_negative<size_t>(indices_[i], size);

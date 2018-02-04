@@ -56,16 +56,17 @@ inline void _table_impl(T*& data_ptr, Function fn, const ArrayTuple& arrays)
     else
         for (; begin != end; ++begin)
         {
+            static_assert(std::is_same_v<decltype(fn(*begin)), T>, "there should not be conversion");
             *data_ptr = fn(*begin);
             ++data_ptr;
         }
 }
 
 template<typename Function, typename... Arrays>
-inline auto table(Function fn, Arrays&&... arrays)
+inline array<std::invoke_result_t<Function, array_or_arithmetic_elem_t<Arrays>...>, sizeof...(Arrays)> 
+    table(Function fn, Arrays&&... arrays)
 {
-    using result_t = std::invoke_result_t<Function, 
-        array_elem_t<decltype(make_range_if_arithmetic(std::declval<Arrays>()))>...>;
+    using result_t = std::invoke_result_t<Function, array_or_arithmetic_elem_t<Arrays>...>;
     auto array_tuple = std::make_tuple(make_range_if_arithmetic(std::forward<Arrays>(arrays))...);
     array<result_t, sizeof...(Arrays)> ret(size_of_array_tuple(array_tuple));
     result_t* data_ptr = ret.data();

@@ -57,7 +57,7 @@ public:
         // caller should check the dimensions
         NDARRAY_ASSERT(_check_size());
     }
-    
+
 
     // copy data from another view, assuming identical dimensions
     template<typename View, view_type = View::_my_view_type_v>
@@ -102,7 +102,7 @@ public:
         static_assert(I < _depth_v);
         return dims_[I];
     }
-    
+
     // array of dimensions
     std::array<size_t, _depth_v> dimensions() const
     {
@@ -114,31 +114,28 @@ public:
         return dims_.data();
     }
 
-    template<typename... Ints, std::enable_if_t<sizeof...(Ints) == _depth_v && is_all_ints_v<Ints...>, int> = 0>
-    _elem_t& operator()(Ints&&... ints)
+    // automatically calls at() or vpart(), depending on its arguments
+    template<typename... Anys>
+    derive_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>> 
+        operator()(Anys&&... anys)
     {
-        return this->at(std::forward<decltype(ints)>(ints)...);
+        if constexpr (sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>)
+            return this->at(std::forward<decltype(anys)>(anys)...);
+        else
+            return this->vpart(std::forward<decltype(anys)>(anys)...);
     }
 
-    template<typename... Ints, std::enable_if_t<sizeof...(Ints) == _depth_v && is_all_ints_v<Ints...>, int> = 0>
-    _elem_t& operator()(Ints&&... ints) const
+    // automatically calls at() or vpart(), depending on its arguments
+    template<typename... Anys>
+    derive_view_or_elem_type_t<const _elem_t&, const _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>> 
+        operator()(Anys&&... anys) const
     {
-        return this->at(std::forward<decltype(ints)>(ints)...);
+        if constexpr (sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>)
+            return this->at(std::forward<decltype(anys)>(anys)...);
+        else
+            return this->vpart(std::forward<decltype(anys)>(anys)...);
     }
 
-    template<typename... Spans, std::enable_if_t<sizeof...(Spans) != _depth_v || !is_all_ints_v<Spans...>, int> = 0>
-    derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
-        operator()(Spans&&... spans)
-    {
-        return this->vpart(std::forward<decltype(spans)>(spans)...);
-    }
-
-    template<typename... Spans, std::enable_if_t<sizeof...(Spans) != _depth_v || !is_all_ints_v<Spans...>, int> = 0>
-    derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
-        operator()(Spans&&... spans) const
-    {
-        return this->vpart(std::forward<decltype(spans)>(spans)...);
-    }
 
     // indexing with a tuple/array of integers
     template<typename Tuple>
@@ -203,7 +200,7 @@ public:
     {
         return element_cend();
     }
-    
+
     template<bool IsExplicitConst, size_t Level>
     auto _begin_impl()
     {

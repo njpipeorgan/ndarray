@@ -59,6 +59,31 @@ template<size_t N>
 using n_all_indexer_tuple_t = typename n_all_indexer_tuple<N>::type;
 
 
+template<typename... Ts>
+struct is_all_ints;
+template<typename T1, typename... Ts>
+struct is_all_ints<T1, Ts...>
+{
+    static constexpr bool value = std::is_integral_v<remove_cvref_t<T1>> && is_all_ints<Ts...>::value;
+};
+template<>
+struct is_all_ints<>
+{
+    static constexpr bool value = true;
+};
+template<typename... Ts>
+constexpr bool is_all_ints_v = is_all_ints<Ts...>::value;
+
+template<typename Tuple>
+struct is_all_int_tuple : 
+    std::false_type {};
+template<typename... Ts>
+struct is_all_int_tuple<std::tuple<Ts...>> : 
+    is_all_ints<Ts...> {};
+template<typename Tuple>
+constexpr bool is_all_int_tuple_v = is_all_int_tuple<Tuple>::value;
+
+
 template<typename Span>
 struct classify_span_type
 {
@@ -256,6 +281,17 @@ template<typename T, typename IndexerTuple, typename SpanTuple>
 using derive_view_type_t = typename derive_view_type<T, IndexerTuple, SpanTuple>::type;
 
 
+// gives type U if SpanTuple contains Depth integers
+template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
+struct derive_view_or_elem_type
+{
+    using type = std::conditional_t<
+        std::tuple_size_v<SpanTuple> == Depth && is_all_int_tuple_v<SpanTuple>, 
+        U, derive_view_type_t<T, IndexerTuple, SpanTuple>>;
+};
+template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
+using derive_view_or_elem_type_t = typename derive_view_or_elem_type<U, T, Depth, IndexerTuple, SpanTuple>::type;
+
 template<size_t IterDepth, typename IndexerTuple, typename TakenTuple = std::tuple<>>
 struct identify_view_iter_type;
 template<size_t IterDepth, typename I1, typename... Is, typename... Takens>
@@ -285,22 +321,6 @@ struct derive_view_iter_type
 template<size_t IterDepth, typename IndexerTuple, typename BaseView, typename SubView, bool IsExplicitConst>
 using derive_view_iter_type_t = typename derive_view_iter_type<
     IterDepth, IndexerTuple, BaseView, SubView, IsExplicitConst>::type;
-
-
-template<typename... Ts>
-struct is_all_ints;
-template<typename T1, typename... Ts>
-struct is_all_ints<T1, Ts...>
-{
-    static constexpr bool value = std::is_integral_v<remove_cvref_t<T1>> && is_all_ints<Ts...>::value;
-};
-template<>
-struct is_all_ints<>
-{
-    static constexpr bool value = true;
-};
-template<typename... Ts>
-constexpr auto is_all_ints_v = is_all_ints<Ts...>::value;
 
 
 template<typename Array>
@@ -349,6 +369,7 @@ using traverse_access_tag = std::integral_constant<access_type, access_type::tra
 template<typename Array>
 using access_type_tag = std::integral_constant<access_type, identify_access_type_v<Array>>;
 
+
 template<typename Array>
 struct array_elem_impl
 {
@@ -363,7 +384,27 @@ template<typename Array>
 struct array_elem :
     array_elem_impl<remove_cvref_t<Array>> {};
 template<typename Array>
-using array_elem_t = typename array_elem<Array>::type;
+using array_elem_t = typename array_elem<Array>::type; // array_elem_t automatically remove cv qualifiers of the type
+
+
+template<typename Any, bool IsArithmetic = std::is_arithmetic_v<Any>>
+struct array_or_arithmetic_elem_impl;
+template<typename Array>
+struct array_or_arithmetic_elem_impl<Array, false>
+{
+    using type = array_elem_t<Array>;
+};
+template<typename Arithmetic>
+struct array_or_arithmetic_elem_impl<Arithmetic, true>
+{
+    using type = decltype(int(0) + Arithmetic{});
+};
+template<typename Any>
+struct array_or_arithemtic_elem : 
+    array_or_arithmetic_elem_impl<Any> {};
+template<typename Any>
+using array_or_arithmetic_elem_t = typename array_or_arithemtic_elem<Any>::type;
+
 
 template<typename Array>
 struct array_depth_impl
