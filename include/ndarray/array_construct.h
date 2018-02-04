@@ -1,48 +1,39 @@
 #pragma once
 
 #include "array.h"
+#include "range_view.h"
 
 namespace ndarray
 {
 
 template<typename TFirst, typename TLast>
-inline auto range(TFirst first, TLast last)
+constexpr inline auto vrange(TFirst first, TLast last)
 {
-    auto   diff = static_cast<ptrdiff_t>(last - first);
-    size_t size = diff > 0 ? size_t(diff) : 0;
-    std::vector<TFirst> data(size);
-    for (size_t i = 0; i < size; ++i)
-        data[i] = static_cast<TFirst>(first + i);
-    return array<TFirst, 1>(std::move(data), {size});
+    return make_range_view(first, last);
 }
 
 template<typename TFirst, typename TLast, typename TStep>
-inline auto range(TFirst first, TLast last, TStep step)
+constexpr inline auto vrange(TFirst first, TLast last, TStep step)
 {
-    auto   diff = static_cast<ptrdiff_t>((last - first) / step);
-    size_t size = diff > 0 ? size_t(diff) : 0;
-    std::vector<TFirst> data(size);
-    for (size_t i = 0; i < size; ++i)
-        data[i] = static_cast<TFirst>(first + i * step);
-    return array<TFirst, 1>(std::move(data), {size});
+    return make_range_view(first, last, step);
 }
 
 template<typename TLast>
-inline auto range(TLast last)
+constexpr inline auto vrange(TLast last)
 {
-    return range(TLast(0), last);
+    return make_range_view(int(0), last);
 }
 
 template<size_t I, typename T, typename Function, typename ArrayTuple>
-inline void _table_impl(T*& data_ptr, Function fn, const ArrayTuple& arrs)
+inline void _table_impl(T*& data_ptr, Function fn, const ArrayTuple& arrays)
 {
-    const auto& arr_i = std::get<I>(arrs);
+    const auto& arr_i = std::get<I>(arrays);
     auto begin = element_begin(arr_i);
     auto end   = element_end(arr_i);
 
     if constexpr (I + 1 < std::tuple_size_v<ArrayTuple>)
         for (; begin != end; ++begin)
-            _table_impl<I + 1>(data_ptr, [=](auto&&... args) { return fn(*begin, std::forward<decltype(args)>(args)...); }, arrs);
+            _table_impl<I + 1>(data_ptr, [=](auto&&... args) { return fn(*begin, std::forward<decltype(args)>(args)...); }, arrays);
     else
         for (; begin != end; ++begin)
         {
@@ -52,13 +43,25 @@ inline void _table_impl(T*& data_ptr, Function fn, const ArrayTuple& arrs)
 }
 
 template<typename Function, typename... Arrays>
-inline auto table(Function fn, Arrays&&... arrs)
+inline auto table(Function fn, Arrays&&... arrays)
 {
-    using result_t = std::invoke_result_t<Function, typename remove_cvref_t<Arrays>::_elem_t...>;
-    array<result_t, sizeof...(Arrays)> ret(size_of_arrays(arrs...));
+    using result_t = std::invoke_result_t<Function, 
+        array_elem_t<decltype(make_range_if_arithmetic(std::declval<Arrays>()))>...>;
+    auto array_tuple = std::make_tuple(make_range_if_arithmetic(std::forward<Arrays>(arrays))...);
+    array<result_t, sizeof...(Arrays)> ret(size_of_array_tuple(array_tuple));
     result_t* data_ptr = ret.data();
-    _table_impl<0, result_t, Function>(data_ptr, fn, std::forward_as_tuple(arrs...));
+    _table_impl<0, result_t, Function>(data_ptr, fn, array_tuple);
     return ret;
+}
+
+template<typename Value, typename... Ints>
+inline auto const_table(Value value, Ints... ints)
+{
+    constexpr size_t depth_v = sizeof...(Ints);
+    using elem_t = decltype(value);
+    std::array<size_t, depth_v> dims = {ints...};
+    std::vector<elem_t> data(size_t((ints * ... * size_t(1))), value);
+    return array<elem_t, depth_v>{std::move(data), dims};
 }
 
 

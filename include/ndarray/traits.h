@@ -341,6 +341,38 @@ template<typename Array>
 constexpr access_type identify_access_type_v = identify_access_type<Array>::value;
 
 
+template<typename Array>
+struct array_elem_impl
+{
+    using type = typename Array::_elem_t;
+};
+template<typename T>
+struct array_elem_impl<std::vector<T>>
+{
+    using type = T;
+};
+template<typename Array>
+struct array_elem :
+    array_elem_impl<remove_cvref_t<Array>> {};
+template<typename Array>
+using array_elem_t = typename array_elem<Array>::type;
+
+
+template<typename Array>
+struct array_depth_impl
+{
+    static constexpr size_t value = Array::_depth_v;
+};
+template<typename T>
+struct array_depth_impl<std::vector<T>>
+{
+    static constexpr size_t value = 1;
+};
+template<typename Array>
+struct array_depth : 
+    array_depth_impl<remove_cvref_t<Array>> {};
+template<typename Array>
+constexpr size_t array_depth_v = array_depth<Array>::value;
 
 
 }

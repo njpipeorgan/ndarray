@@ -3,6 +3,7 @@
 #include "traits.h"
 #include "array.h"
 #include "array_view.h"
+#include "range_view.h"
 
 namespace ndarray
 {

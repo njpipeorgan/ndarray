@@ -41,7 +41,7 @@ constexpr bool _always_false_v = false;
 struct empty_struct
 {
     template<typename... T>
-    empty_struct(T...) {}
+    constexpr empty_struct(T...) noexcept {}
 };
 
 
@@ -88,23 +88,23 @@ constexpr inline bool _check_bound_scalar(Index index, Size size)
 template<typename Indices, typename Size>
 constexpr inline bool _check_bound_vector(Indices indices, Size size)
 {
-    return std::all_of(indices.begin(), indices.end(), 
+    return std::all_of(indices.begin(), indices.end(),
                        [=](auto i) { return _check_bound_scalar(i, size); });
 }
 
-template<size_t I, typename Array1, typename... Arrays>
-inline void _size_of_arrays_impl(size_t* sizes, const Array1& arr1, const Arrays&... arrs)
+template<size_t I, typename ArrayTuple>
+inline void _size_of_array_tuple_impl(size_t* sizes, const ArrayTuple& arrays)
 {
-    sizes[I] = arr1.size();
-    if constexpr (sizeof...(Arrays) > 0)
-        _size_of_arrays_impl<I + 1>(sizes, arrs...);
+    sizes[I] = std::get<I>(arrays).size();
+    if constexpr (I + 1 < std::tuple_size_v<ArrayTuple>)
+        _size_of_array_tuple_impl<I + 1>(sizes, arrays);
 }
 
-template<typename... Arrays>
-inline std::array<size_t, sizeof...(Arrays)> size_of_arrays(const Arrays&... arrs)
+template<typename ArrayTuple>
+inline std::array<size_t, std::tuple_size_v<ArrayTuple>> size_of_array_tuple(const ArrayTuple& arrays)
 {
-    std::array<size_t, sizeof...(Arrays)> sizes;
-    _size_of_arrays_impl<0>(sizes.data(), arrs...);
+    std::array<size_t, std::tuple_size_v<ArrayTuple>> sizes;
+    _size_of_array_tuple_impl<0>(sizes.data(), arrays);
     return sizes;
 }
 

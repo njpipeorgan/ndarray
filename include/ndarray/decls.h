@@ -52,7 +52,7 @@ using irregular_elem_const_iter = typename irregular_elem_iter<View, true>;
 
 template<typename T, bool IsUnitStep>
 class range_view;
-template<typename T>
+template<typename T, bool IsUnitStep, bool IsIntegral = std::is_integral_v<T>>
 class range_view_iter;
 
 
