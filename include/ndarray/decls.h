@@ -36,6 +36,8 @@ class regular_view_iter;
 template<typename SubView, typename BaseView, bool IsExplicitConst>
 class irregular_view_iter;
 
+template<typename ViewCref, size_t IndicesDepth>
+class irregular_indices;
 template<typename T, bool IsExplicitConst = false>
 class simple_elem_iter;
 template<typename T, bool IsExplicitConst = false>

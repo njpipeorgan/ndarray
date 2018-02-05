@@ -134,13 +134,14 @@ public:
         else
             return dimension<LastLevel - 1>() * size<LastLevel - 1, FirstLevel>();
     }
-    
+
     // automatically calls at() or vpart(), depending on its arguments
     template<typename... Anys>
-    derive_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>> 
+    derive_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
         operator()(Anys&&... anys) const
     {
-        if constexpr (sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>)
+        constexpr bool is_complete_index = sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>;
+        if constexpr (is_complete_index)
             return this->at(std::forward<decltype(anys)>(anys)...);
         else
             return this->vpart(std::forward<decltype(anys)>(anys)...);
@@ -354,6 +355,19 @@ public:
             fn(*(this->base_ptr_ + i));
     }
 
+    // return a forward-iterator-like function object
+    auto traverse_iterator() const
+    {
+        auto iter =
+            [base_ptr=this->base_ptr_]() mutable
+        {
+            _elem_t& val = *base_ptr;
+            ++base_ptr;
+            return val;
+        };
+        return iter;
+    }
+
     // copy data to destination given size, assuming no aliasing
     template<typename Iter>
     void copy_to(Iter dst, size_t size) const
@@ -517,6 +531,19 @@ public:
         const ptrdiff_t stride = this->stride();
         for (size_t i = 0; i < size; ++i)
             fn(*(this->base_ptr_ + i * stride));
+    }
+
+    // return a forward-iterator-like function object
+    auto traverse_iterator() const
+    {
+        auto iter =
+            [base_ptr=this->base_ptr_, stride=stride()]() mutable
+        {
+            _elem_t& val = *base_ptr;
+            base_ptr += stride;
+            return val;
+        };
+        return iter;
     }
 
     // copy data to destination given size, assuming no aliasing
@@ -713,6 +740,19 @@ public:
     void traverse(Function fn) const
     {
         traverse_impl<0, 0, Function>(fn);
+    }
+    
+    // return a forward-iterator-like function object
+    auto traverse_iterator() const
+    {
+        auto iter =
+            [indices = irregular_indices<_my_type, _depth_v>{*this}]() mutable
+        {
+            _elem_t& val = indices.get_element_ref();
+            indices.explicit_inc();
+            return val;
+        };
+        return iter;
     }
 
     // copy data to destination, assuming no aliasing

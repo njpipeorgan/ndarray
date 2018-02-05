@@ -116,10 +116,11 @@ public:
 
     // automatically calls at() or vpart(), depending on its arguments
     template<typename... Anys>
-    derive_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>> 
+    derive_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
         operator()(Anys&&... anys)
     {
-        if constexpr (sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>)
+        constexpr bool is_complete_index = sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>;
+        if constexpr (is_complete_index)
             return this->at(std::forward<decltype(anys)>(anys)...);
         else
             return this->vpart(std::forward<decltype(anys)>(anys)...);
@@ -130,7 +131,8 @@ public:
     derive_view_or_elem_type_t<const _elem_t&, const _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>> 
         operator()(Anys&&... anys) const
     {
-        if constexpr (sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>)
+        constexpr bool is_complete_index = sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>;
+        if constexpr (is_complete_index)
             return this->at(std::forward<decltype(anys)>(anys)...);
         else
             return this->vpart(std::forward<decltype(anys)>(anys)...);
@@ -344,6 +346,32 @@ public:
         std::for_each_n(data(), size(), fn);
     }
 
+    // return a forward-iterator-like function object
+    auto traverse_iterator()
+    {
+        auto iter =
+            [base_ptr=this->data()]() mutable
+        {
+            _elem_t& val = *base_ptr;
+            ++base_ptr;
+            return val;
+        };
+        return iter;
+    }
+
+    // return a forward-iterator-like function object
+    auto traverse_iterator() const
+    {
+        auto iter =
+            [base_ptr=this->data()]() mutable
+        {
+            const _elem_t& val = *base_ptr;
+            ++base_ptr;
+            return val;
+        };
+        return iter;
+    }
+
     // check whether having same dimensions with another array, starting at specific levels
     template<size_t MyStartLevel = 0, size_t OtherStartLevel = 0, typename OtherArray>
     bool has_same_dimensions(const OtherArray& other) const
@@ -356,6 +384,7 @@ public:
             return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>() &&
             has_same_dimensions<MyStartLevel + 1, OtherStartLevel + 1>(other);
     }
+
 
     // copy data to destination given size, assuming no aliasing
     template<typename Iter>
