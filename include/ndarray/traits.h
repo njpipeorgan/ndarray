@@ -37,9 +37,10 @@ enum class view_type
 };
 enum class access_type
 {
-    vector   = 0, // object that owns a vector
-    iterator = 1, // object that implements O(1) element_begin() and element_end()
-    traverse = 2  // object that implements O(1) traverse(Fn)
+    lv_array, // lvalue array
+    rv_array, // rvalue array
+    iterator, // object that implements O(1) element_begin() and element_end()
+    traverse  // object that implements O(1) traverse(Fn)
 };
 
 
@@ -74,11 +75,12 @@ struct is_all_ints<>
 template<typename... Ts>
 constexpr bool is_all_ints_v = is_all_ints<Ts...>::value;
 
+
 template<typename Tuple>
-struct is_all_int_tuple : 
+struct is_all_int_tuple :
     std::false_type {};
 template<typename... Ts>
-struct is_all_int_tuple<std::tuple<Ts...>> : 
+struct is_all_int_tuple<std::tuple<Ts...>> :
     is_all_ints<Ts...> {};
 template<typename Tuple>
 constexpr bool is_all_int_tuple_v = is_all_int_tuple<Tuple>::value;
@@ -113,17 +115,18 @@ template<typename Span>
 constexpr span_type classify_span_type_v = classify_span_type<Span>::value;
 
 template<typename Indexer>
-struct classify_indexer_type
+struct indexer_type_of
 {
     static constexpr indexer_type value =
-        std::is_same_v<Indexer, scalar_indexer> ? indexer_type::scalar :
-        std::is_same_v<Indexer, all_indexer> ? indexer_type::all :
-        std::is_same_v<Indexer, simple_indexer> ? indexer_type::simple :
-        std::is_same_v<Indexer, regular_indexer> ? indexer_type::regular :
+        std::is_same_v<Indexer, scalar_indexer>    ? indexer_type::scalar    :
+        std::is_same_v<Indexer, all_indexer>       ? indexer_type::all       :
+        std::is_same_v<Indexer, simple_indexer>    ? indexer_type::simple    :
+        std::is_same_v<Indexer, regular_indexer>   ? indexer_type::regular   :
         std::is_same_v<Indexer, irregular_indexer> ? indexer_type::irregular : indexer_type::invalid;
 };
 template<typename Indexer>
-constexpr indexer_type classify_indexer_type_v = classify_indexer_type<Indexer>::value;
+constexpr indexer_type indexer_type_of_v = indexer_type_of<Indexer>::value;
+
 
 template<typename Indexer, typename Span>
 struct indexer_collapsing
@@ -131,10 +134,10 @@ struct indexer_collapsing
     using span_t = remove_cvref_t<Span>;
     using indexer_t = remove_cvref_t<Indexer>;
     static constexpr span_type    span_v = classify_span_type_v<span_t>;
-    static constexpr indexer_type indexer_v = classify_indexer_type_v<indexer_t>;
+    static constexpr indexer_type indexer_v = indexer_type_of_v<indexer_t>;
     static_assert(indexer_v != indexer_type::scalar  &&
-        indexer_v != indexer_type::invalid &&
-        span_v != span_type::invalid);
+                  indexer_v != indexer_type::invalid &&
+                  span_v != span_type::invalid);
     using type =
         std::conditional_t<span_v == span_type::scalar, scalar_indexer,
         std::conditional_t<span_v == span_type::all, indexer_t,
@@ -197,28 +200,28 @@ struct indexer_tuple_depth<std::tuple<>, N>
 template<typename IndexerTuple>
 constexpr size_t indexer_tuple_depth_v = indexer_tuple_depth<IndexerTuple>::value;
 
-template<typename IndexerTuple, size_t I = 0, view_type State = view_type::scalar,
-    size_t N = std::tuple_size_v<IndexerTuple>>
-    struct identify_view_type
+
+template<typename IndexerTuple, size_t I = 0, view_type State = view_type::scalar, size_t N = std::tuple_size_v<IndexerTuple>>
+struct identify_view_type
 {
     static_assert(I < N);
     using vt = view_type;
     using it = indexer_type;
     static constexpr vt sv = State;
-    static constexpr it iv = classify_indexer_type_v<std::tuple_element_t<I, IndexerTuple>>;
+    static constexpr it iv = indexer_type_of_v<std::tuple_element_t<I, IndexerTuple>>;
 
     static constexpr view_type new_sv =
         (sv == vt::invalid || iv == it::invalid) ?
         (vt::invalid) :
         (sv == vt::scalar) ?
         (iv == it::scalar ? vt::scalar :
-            iv == it::all ? vt::simple :
-            iv == it::simple ? vt::simple :
-            iv == it::regular ? vt::regular : vt::irregular) :
-            (sv == vt::simple) ?
+         iv == it::all ? vt::simple :
+         iv == it::simple ? vt::simple :
+         iv == it::regular ? vt::regular : vt::irregular) :
+         (sv == vt::simple) ?
         (iv == it::scalar ? vt::regular :
-            iv == it::all ? vt::simple : vt::irregular) :
-            (sv == vt::regular && iv == it::scalar) ?
+         iv == it::all ? vt::simple : vt::irregular) :
+         (sv == vt::regular && iv == it::scalar) ?
         (vt::regular) :
         (vt::irregular);
 
@@ -230,7 +233,7 @@ struct identify_view_type<IndexerTuple, N, State, N>
     static constexpr view_type value = State;
 };
 template<typename IndexerTuple>
-constexpr view_type _identify_view_type_v = identify_view_type<IndexerTuple>::value;
+constexpr view_type identify_view_type_v = identify_view_type<IndexerTuple>::value;
 
 
 template<typename IndexerTuple, typename Sequence = std::index_sequence<>, size_t N = std::tuple_size_v<IndexerTuple>>
@@ -256,20 +259,20 @@ struct non_scalar_indexer_finder<std::tuple<>, Sequence, N>
 template<size_t... Is>
 constexpr std::array<size_t, sizeof...(Is)> _make_non_scalar_indexer_table_impl(std::index_sequence<Is...>)
 {
-    return { Is... };
+    return {Is...};
 }
 template<typename IndexerTuple>
-constexpr std::array<size_t, indexer_tuple_depth_v<IndexerTuple>> _make_non_scalar_indexer_table()
+constexpr std::array<size_t, indexer_tuple_depth_v<IndexerTuple>> make_non_scalar_indexer_table()
 {
     return _make_non_scalar_indexer_table_impl(typename non_scalar_indexer_finder<IndexerTuple>::type{});
 }
 
 
 template<typename T, typename IndexerTuple, typename SpanTuple>
-struct derive_view_type
+struct deduce_view_type
 {
     using indexers_t = indexer_tuple_collapsing_t<IndexerTuple, SpanTuple>;
-    static constexpr view_type _view_type_v = _identify_view_type_v<indexers_t>;
+    static constexpr view_type _view_type_v = identify_view_type_v<indexers_t>;
 
     using type =
         std::conditional_t<_view_type_v == view_type::simple, simple_view<T, indexers_t>,
@@ -278,149 +281,194 @@ struct derive_view_type
         void>>>;
 };
 template<typename T, typename IndexerTuple, typename SpanTuple>
-using derive_view_type_t = typename derive_view_type<T, IndexerTuple, SpanTuple>::type;
+using deduce_view_type_t = typename deduce_view_type<T, IndexerTuple, SpanTuple>::type;
 
 
 // gives type U if SpanTuple contains Depth integers
 template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
-struct derive_view_or_elem_type
+struct deduce_view_or_elem_type
 {
     using type = std::conditional_t<
-        std::tuple_size_v<SpanTuple> == Depth && is_all_int_tuple_v<SpanTuple>, 
-        U, derive_view_type_t<T, IndexerTuple, SpanTuple>>;
+        std::tuple_size_v<SpanTuple> == Depth && is_all_int_tuple_v<SpanTuple>,
+        U, deduce_view_type_t<T, IndexerTuple, SpanTuple>>;
 };
 template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
-using derive_view_or_elem_type_t = typename derive_view_or_elem_type<U, T, Depth, IndexerTuple, SpanTuple>::type;
+using deduce_view_or_elem_type_t = typename deduce_view_or_elem_type<U, T, Depth, IndexerTuple, SpanTuple>::type;
 
+
+// identify_view_iter_type gives the category of iterator in terms of its view
 template<size_t IterDepth, typename IndexerTuple, typename TakenTuple = std::tuple<>>
 struct identify_view_iter_type;
 template<size_t IterDepth, typename I1, typename... Is, typename... Takens>
-struct identify_view_iter_type<IterDepth, std::tuple<I1, Is...>, std::tuple<Takens...>> : 
+struct identify_view_iter_type<IterDepth, std::tuple<I1, Is...>, std::tuple<Takens...>> :
     identify_view_iter_type<IterDepth - 1, std::tuple<Is...>, std::tuple<Takens..., I1>> {};
 template<typename I1, typename... Is, typename... Takens>
 struct identify_view_iter_type<0, std::tuple<I1, Is...>, std::tuple<Takens...>>
 {
     using iter_indexers_t = std::tuple<Takens..., scalar_indexer /* acting as all remaining scalars */>;
-    static constexpr view_type value = _identify_view_type_v<iter_indexers_t>;
+    static constexpr view_type value = identify_view_type_v<iter_indexers_t>;
 };
 template<size_t IterDepth, typename IndexerTuple>
-constexpr view_type _identify_view_iter_type_v = identify_view_iter_type<IterDepth, IndexerTuple>::value;
+constexpr view_type identify_view_iter_type_v = identify_view_iter_type<IterDepth, IndexerTuple>::value;
 
 
+// deduce_view_iter_type gives the type of iterator based on the indexer tuple
 template<size_t IterDepth, typename IndexerTuple, typename BaseView, typename SubView, bool IsExplicitConst>
-struct derive_view_iter_type
+struct deduce_view_iter_type
 {
-    static constexpr view_type view_iter_type_v = _identify_view_iter_type_v<IterDepth, IndexerTuple>;
-    using type = 
-        std::conditional_t<view_iter_type_v == view_type::regular, 
-        regular_view_iter<SubView, IsExplicitConst>, 
-        std::conditional_t<view_iter_type_v == view_type::irregular, 
-        irregular_view_iter<SubView, BaseView, IsExplicitConst>, 
+    static constexpr view_type view_iter_type_v = identify_view_iter_type_v<IterDepth, IndexerTuple>;
+    using type =
+        std::conditional_t<view_iter_type_v == view_type::regular,
+        regular_view_iter<SubView, IsExplicitConst>,
+        std::conditional_t<view_iter_type_v == view_type::irregular,
+        irregular_view_iter<SubView, BaseView, IsExplicitConst>,
         void>>;
 };
 template<size_t IterDepth, typename IndexerTuple, typename BaseView, typename SubView, bool IsExplicitConst>
-using derive_view_iter_type_t = typename derive_view_iter_type<
+using deduce_view_iter_type_t = typename deduce_view_iter_type<
     IterDepth, IndexerTuple, BaseView, SubView, IsExplicitConst>::type;
 
 
 template<typename Array>
-struct identify_access_type_impl;
-template<typename T>
-struct identify_access_type_impl<std::vector<T>>
+struct access_type_of_impl2;
+template<typename Array>
+struct access_type_of_impl1 :
+    access_type_of_impl2<std::remove_reference_t<Array>> {};
+template<typename T, size_t Depth>
+struct access_type_of_impl1<array<T, Depth>&>
 {
-    static constexpr access_type value = access_type::vector;
+    static constexpr access_type value = access_type::lv_array;
 };
 template<typename T, size_t Depth>
-struct identify_access_type_impl<array<T, Depth>>
+struct access_type_of_impl1<array<T, Depth>&&>
 {
-    static constexpr access_type value = access_type::vector;
+    static constexpr access_type value = access_type::rv_array;
+}; template<typename T, size_t Depth>
+struct access_type_of_impl1<array<T, Depth>>
+{
+    // should not reach
 };
 template<typename T, typename IndexerTuple>
-struct identify_access_type_impl<simple_view<T, IndexerTuple>>
+struct access_type_of_impl2<simple_view<T, IndexerTuple>>
 {
     static constexpr access_type value = access_type::iterator;
 };
 template<typename T, typename IndexerTuple>
-struct identify_access_type_impl<regular_view<T, IndexerTuple>>
+struct access_type_of_impl2<regular_view<T, IndexerTuple>>
 {
     static constexpr access_type value = access_type::iterator;
 };
 template<typename T, typename IndexerTuple>
-struct identify_access_type_impl<irregular_view<T, IndexerTuple>>
+struct access_type_of_impl2<irregular_view<T, IndexerTuple>>
 {
     static constexpr access_type value = access_type::traverse;
 };
 template<typename T, bool IsUnitStep>
-struct identify_access_type_impl<range_view<T, IsUnitStep>>
+struct access_type_of_impl2<range_view<T, IsUnitStep>>
 {
     static constexpr access_type value = access_type::iterator;
 };
 template<typename Array>
-struct identify_access_type : 
-    identify_access_type_impl<remove_cvref_t<Array>> {};
+struct access_type_of :
+    access_type_of_impl1<std::remove_cv_t<Array>> {};
 template<typename Array>
-constexpr access_type identify_access_type_v = identify_access_type<Array>::value;
+constexpr access_type access_type_of_v = access_type_of<Array>::value;
 
-
-using vector_access_tag   = std::integral_constant<access_type, access_type::vector>;
+using lv_array_access_tag = std::integral_constant<access_type, access_type::lv_array>;
+using rv_array_access_tag = std::integral_constant<access_type, access_type::rv_array>;
 using iterator_access_tag = std::integral_constant<access_type, access_type::iterator>;
 using traverse_access_tag = std::integral_constant<access_type, access_type::traverse>;
 
 template<typename Array>
-using access_type_tag = std::integral_constant<access_type, identify_access_type_v<Array>>;
+using access_type_tag = std::integral_constant<access_type, access_type_of_v<Array>>;
 
 
 template<typename Array>
-struct array_elem_impl
+struct is_array_object_impl : 
+    std::false_type {};
+template<typename T, size_t Depth>
+struct is_array_object_impl<array<T, Depth>> : 
+    std::true_type {};
+template<typename T, typename IndexerTuple>
+struct is_array_object_impl<simple_view<T, IndexerTuple>> : 
+    std::true_type {};
+template<typename T, typename IndexerTuple>
+struct is_array_object_impl<regular_view<T, IndexerTuple>> : 
+    std::true_type {};
+template<typename T, typename IndexerTuple>
+struct is_array_object_impl<irregular_view<T, IndexerTuple>> : 
+    std::true_type {};
+template<typename T, bool IsUnitStep>
+struct is_array_object_impl<range_view<T, IsUnitStep>> : 
+    std::true_type {};
+template<typename Array>
+struct is_array_object : 
+    is_array_object_impl<remove_cvref_t<Array>> {};
+template<typename Array>
+constexpr bool is_array_object_v = is_array_object<Array>;
+
+
+// array_elem_of_t returns the element type of an object when it is 
+// converted to an array. 
+// array_elem_of_t automatically remove cv qualifiers of the type
+template<typename Array, bool IsArray = is_array_object_v<Array>>
+struct array_elem_of_impl;
+template<typename Array>
+struct array_elem_of_impl<Array, true>
 {
-    using type = std::remove_cv_t<typename Array::_elem_t>;
+    using type = typename Array::_elem_t;
+};
+template<typename Scalar>
+struct array_elem_of_impl<Scalar, false>
+{
+    using type = Scalar;
 };
 template<typename T>
-struct array_elem_impl<std::vector<T>>
+struct array_elem_of_impl<std::vector<T>, false>
 {
     using type = T;
 };
 template<typename Array>
 struct array_elem :
-    array_elem_impl<remove_cvref_t<Array>> {};
+    array_elem_of_impl<remove_cvref_t<Array>> {};
 template<typename Array>
-using array_elem_t = typename array_elem<Array>::type; // array_elem_t automatically remove cv qualifiers of the type
+using array_elem_of_t = typename array_elem<Array>::type;
 
 
 template<typename Any, bool IsArithmetic = std::is_arithmetic_v<Any>>
-struct array_or_arithmetic_elem_impl;
+struct array_or_range_elem_of_impl;
 template<typename Array>
-struct array_or_arithmetic_elem_impl<Array, false>
+struct array_or_range_elem_of_impl<Array, false>
 {
-    using type = array_elem_t<Array>;
+    using type = array_elem_of_t<Array>;
 };
 template<typename Arithmetic>
-struct array_or_arithmetic_elem_impl<Arithmetic, true>
+struct array_or_range_elem_of_impl<Arithmetic, true>
 {
     using type = decltype(int(0) + Arithmetic{});
 };
 template<typename Any>
-struct array_or_arithemtic_elem : 
-    array_or_arithmetic_elem_impl<Any> {};
+struct array_or_range_elem_of :
+    array_or_range_elem_of_impl<Any> {};
 template<typename Any>
-using array_or_arithmetic_elem_t = typename array_or_arithemtic_elem<Any>::type;
+using array_or_range_elem_of_t = typename array_or_range_elem_of<Any>::type;
 
 
 template<typename Array>
-struct array_depth_impl
+struct array_depth_of_impl
 {
     static constexpr size_t value = Array::_depth_v;
 };
 template<typename T>
-struct array_depth_impl<std::vector<T>>
+struct array_depth_of_impl<std::vector<T>>
 {
     static constexpr size_t value = 1;
 };
 template<typename Array>
-struct array_depth : 
-    array_depth_impl<remove_cvref_t<Array>> {};
+struct array_depth_of :
+    array_depth_of_impl<remove_cvref_t<Array>> {};
 template<typename Array>
-constexpr size_t array_depth_v = array_depth<Array>::value;
+constexpr size_t array_depth_of_v = array_depth_of<Array>::value;
 
 
 }

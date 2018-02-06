@@ -9,7 +9,13 @@ namespace ndarray
 {
 
 template<size_t NewDepth, typename Array>
-inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, vector_access_tag)
+inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, lv_array_access_tag)
+{
+    using elem_t = typename remove_cvref_t<Array>::_elem_t;
+    return array<elem_t, NewDepth>(get_vector(std::forward<Array>(src)), dims);
+}
+template<size_t NewDepth, typename Array>
+inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, rv_array_access_tag)
 {
     using elem_t = typename remove_cvref_t<Array>::_elem_t;
     return array<elem_t, NewDepth>(get_vector(std::forward<Array>(src)), dims);
@@ -34,7 +40,7 @@ inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, traver
 template<size_t NewDepth, typename Array>
 inline auto reshape(Array&& src, std::array<size_t, NewDepth> dims)
 {
-    auto ret = _reshape_impl<NewDepth>(std::forward<Array>(src), dims, access_type_tag<Array>{});
+    auto ret = _reshape_impl<NewDepth>(std::forward<decltype(src)>(src), dims, access_type_tag<Array&&>{});
     ret._check_size();
     return ret;
 }
@@ -53,7 +59,7 @@ template<size_t PartDepth, typename Array>
 inline auto partition(Array&& src, std::array<size_t, PartDepth> part_dims)
 {
     constexpr size_t part_depth_v = PartDepth;
-    constexpr size_t depth_v      = array_depth_v<Array>;
+    constexpr size_t depth_v      = array_depth_of_v<Array>;
     static_assert(part_depth_v <= depth_v, "too many part dimensions");
     constexpr size_t new_depth_v  = depth_v + PartDepth;
 
@@ -75,7 +81,7 @@ inline auto partition(Array&& src, std::array<size_t, PartDepth> part_dims)
     }
 
     auto ret = _reshape_impl<new_depth_v>(
-        std::forward<Array>(src), new_dims, std::integral_constant<access_type, identify_access_type_v<Array>>{});
+        std::forward<Array>(src), new_dims, std::integral_constant<access_type, access_type_of_v<Array>>{});
     NDARRAY_ASSERT(ret._check_size()); // not necessary
     return ret;
 }
@@ -98,9 +104,9 @@ inline ResultType _element_extract_impl(const DataArray& data, const IndexArray&
 template<typename DataArray, typename IndexArray>
 inline auto element_extract(const DataArray& data, const IndexArray& index)
 {
-    using elem_t  = array_elem_t<DataArray>;
-    constexpr size_t data_depth_v  = array_depth_v<DataArray>;
-    constexpr size_t index_depth_v = array_depth_v<IndexArray>;
+    using elem_t  = array_elem_of_t<DataArray>;
+    constexpr size_t data_depth_v  = array_depth_of_v<DataArray>;
+    constexpr size_t index_depth_v = array_depth_of_v<IndexArray>;
     static_assert(data_depth_v == 1 ? index_depth_v <= 2 : index_depth_v == 2);
 
     size_t size = index.dimension<0>();
@@ -123,8 +129,8 @@ inline auto element_extract(const DataArray& data, const IndexArray& index)
 template<size_t Depth = size_t(-1), typename DataArray, typename IndexArray>
 inline auto extract(const DataArray& data, const IndexArray& index)
 {
-    constexpr size_t data_depth_v  = array_depth_v<DataArray>;
-    constexpr size_t index_depth_v = array_depth_v<IndexArray>;
+    constexpr size_t data_depth_v  = array_depth_of_v<DataArray>;
+    constexpr size_t index_depth_v = array_depth_of_v<IndexArray>;
     static_assert(data_depth_v == 1 ? index_depth_v <= 2 : index_depth_v == 2);
 
     if constexpr (Depth == size_t(-1))

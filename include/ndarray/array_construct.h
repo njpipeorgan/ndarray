@@ -63,10 +63,10 @@ inline void _table_impl(T*& data_ptr, Function fn, const ArrayTuple& arrays)
 }
 
 template<typename Function, typename... Arrays>
-inline array<std::invoke_result_t<Function, array_or_arithmetic_elem_t<Arrays>...>, sizeof...(Arrays)> 
+inline array<std::invoke_result_t<Function, array_or_range_elem_of_t<Arrays>...>, sizeof...(Arrays)> 
     table(Function fn, Arrays&&... arrays)
 {
-    using result_t = std::invoke_result_t<Function, array_or_arithmetic_elem_t<Arrays>...>;
+    using result_t = std::invoke_result_t<Function, array_or_range_elem_of_t<Arrays>...>;
     auto array_tuple = std::make_tuple(make_range_if_arithmetic(std::forward<Arrays>(arrays))...);
     array<result_t, sizeof...(Arrays)> ret(size_of_array_tuple(array_tuple));
     result_t* data_ptr = ret.data();

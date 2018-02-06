@@ -23,7 +23,7 @@ namespace ndarray
 //   e.g. {all, scalar, all}, {regular, all}, {irregular, scalar}
 // 
 //
-// View type are derived by derive_view_type_t based on indexer types.
+// View type are derived by deduce_view_type_t based on indexer types.
 //
 // typename T (_elem_t) reflects the constness of elements in the view, 
 // which is automatically derived from the constness of the base array.
@@ -49,7 +49,7 @@ public:
     static constexpr size_t _depth_v           = indexer_tuple_depth_v<_indexers_t>;
     static constexpr size_t _base_depth_v      = std::tuple_size_v<_indexers_t>;
     static constexpr std::array<size_t, _depth_v>
-        _non_scalar_indexers_table = _make_non_scalar_indexer_table<_indexers_t>();
+        _non_scalar_indexers_table = make_non_scalar_indexer_table<_indexers_t>();
     static constexpr size_t _stride_depth_v    = _non_scalar_indexers_table[_depth_v - 1] + 1;
     static constexpr bool   _has_base_stride_v = (_stride_depth_v != _base_depth_v);
     using _base_stride_t   = std::conditional_t<_has_base_stride_v, size_t, empty_struct>;
@@ -137,7 +137,7 @@ public:
 
     // automatically calls at() or vpart(), depending on its arguments
     template<typename... Anys>
-    derive_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
+    deduce_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
         operator()(Anys&&... anys) const
     {
         constexpr bool is_complete_index = sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>;
@@ -163,7 +163,7 @@ public:
     }
 
     template<typename SpanTuple>
-    derive_view_type_t<_elem_t, _indexers_t, SpanTuple>
+    deduce_view_type_t<_elem_t, _indexers_t, SpanTuple>
         tuple_vpart(SpanTuple&& spans) const
     {
         return get_collapsed_view(
@@ -171,7 +171,7 @@ public:
     }
 
     template<typename... Spans>
-    derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+    deduce_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
         vpart(Spans&&... spans) const
     {
         return tuple_vpart(std::forward_as_tuple(spans...));
@@ -669,7 +669,7 @@ public:
         size_t ptr_stride = this->_total_base_size<
             _base_depth_v, this->_non_scalar_indexers_table[Level - 1] + 1>();
         auto   sub_view   = this->tuple_vpart(repeat_tuple_t<Level, size_t>{});
-        using iter_type = derive_view_iter_type_t<
+        using iter_type = deduce_view_iter_type_t<
             this->_non_scalar_indexers_table[Level], _indexers_t, irregular_view, decltype(sub_view), false>;
         return iter_type{*this, sub_view, ptr_stride};
     }
@@ -685,7 +685,7 @@ public:
         else
         {
             constexpr view_type iter_type_v =
-                _identify_view_iter_type_v<this->_non_scalar_indexers_table[Level], _indexers_t>;
+                identify_view_iter_type_v<this->_non_scalar_indexers_table[Level], _indexers_t>;
             static_assert(iter_type_v == view_type::regular || iter_type_v == view_type::irregular);
             if constexpr (iter_type_v == view_type::regular)
                 return this->_regular_begin_impl<IsExplicitConst, Level>();
@@ -705,7 +705,7 @@ public:
         {
             auto iter = this->_begin_impl<IsExplicitConst, Level>(); // get begin as the iterator
             constexpr view_type iter_type_v =
-                _identify_view_iter_type_v<this->_non_scalar_indexers_table[Level], _indexers_t>;
+                identify_view_iter_type_v<this->_non_scalar_indexers_table[Level], _indexers_t>;
             if constexpr (iter_type_v == view_type::regular)
                 iter += this->size<Level>();                  // add size if regular
             else

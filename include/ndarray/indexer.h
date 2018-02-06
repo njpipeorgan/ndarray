@@ -240,7 +240,7 @@ void get_collapsed_view_impl(size_t& base_offset, NewTuple& new_indexers, size_t
     if constexpr (IC < std::tuple_size_v<remove_cvref_t<IndexerTuple>>)
     {
         decltype(auto) level_indexer = std::get<IC>(std::forward<decltype(indexers)>(indexers));
-        constexpr indexer_type indexer_type_v = classify_indexer_type_v<remove_cvref_t<decltype(level_indexer)>>;
+        constexpr indexer_type indexer_type_v = indexer_type_of_v<remove_cvref_t<decltype(level_indexer)>>;
         static_assert(indexer_type_v != indexer_type::invalid);
 
         size_t level_dim = dims[IC];
@@ -270,10 +270,10 @@ void get_collapsed_view_impl(size_t& base_offset, NewTuple& new_indexers, size_t
 // given a view by base_ptr, dims, and its original indexers, 
 // derive a new view by collapsing span specifications into non-scalar indexers
 template<typename T, typename IndexerTuple, typename SpanTuple>
-derive_view_type_t<T, IndexerTuple, SpanTuple> get_collapsed_view(
+deduce_view_type_t<T, IndexerTuple, SpanTuple> get_collapsed_view(
     T* base_ptr, const size_t* dims, IndexerTuple&& indexers, SpanTuple&& spans)
 {
-    using derived_type = derive_view_type<T, IndexerTuple, SpanTuple>;
+    using derived_type = deduce_view_type<T, IndexerTuple, SpanTuple>;
     using view_t       = typename derived_type::type;
     constexpr view_type view_type_v = derived_type::_view_type_v;
 

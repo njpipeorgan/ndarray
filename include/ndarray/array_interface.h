@@ -114,6 +114,11 @@ inline void traverse(Function fn, View& view)
     view.traverse<Function>(fn);
 }
 
+template<typename View>
+inline void traverse_iterator(View& view)
+{
+    return view.traverse_iterator();
+}
 
 
 }

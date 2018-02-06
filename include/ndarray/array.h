@@ -116,7 +116,7 @@ public:
 
     // automatically calls at() or vpart(), depending on its arguments
     template<typename... Anys>
-    derive_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
+    deduce_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
         operator()(Anys&&... anys)
     {
         constexpr bool is_complete_index = sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>;
@@ -128,7 +128,7 @@ public:
 
     // automatically calls at() or vpart(), depending on its arguments
     template<typename... Anys>
-    derive_view_or_elem_type_t<const _elem_t&, const _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>> 
+    deduce_view_or_elem_type_t<const _elem_t&, const _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>> 
         operator()(Anys&&... anys) const
     {
         constexpr bool is_complete_index = sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>;
@@ -167,6 +167,16 @@ public:
     const _elem_t& at(Ints... ints) const
     {
         return tuple_at(std::make_tuple(ints...));
+    }
+
+    _elem_t& operator[](size_t pos)
+    {
+        return data_[pos];
+    }
+
+    const _elem_t& operator[](size_t pos) const
+    {
+        return data_[pos];
     }
 
     _elem_t* data()
@@ -305,7 +315,7 @@ public:
     }
 
     template<typename SpanTuple>
-    derive_view_type_t<const _elem_t, _indexers_t, SpanTuple>
+    deduce_view_type_t<const _elem_t, _indexers_t, SpanTuple>
         tuple_vpart(SpanTuple&& spans) const
     {
         return get_collapsed_view(
@@ -313,7 +323,7 @@ public:
     }
 
     template<typename SpanTuple>
-    derive_view_type_t<_elem_t, _indexers_t, SpanTuple>
+    deduce_view_type_t<_elem_t, _indexers_t, SpanTuple>
         tuple_vpart(SpanTuple&& spans)
     {
         return get_collapsed_view(
@@ -321,14 +331,14 @@ public:
     }
 
     template<typename... Spans>
-    derive_view_type_t<const _elem_t, _indexers_t, std::tuple<Spans...>>
+    deduce_view_type_t<const _elem_t, _indexers_t, std::tuple<Spans...>>
         vpart(Spans&&... spans) const
     {
         return tuple_vpart(std::forward_as_tuple(spans...));
     }
 
     template<typename... Spans>
-    derive_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+    deduce_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
         vpart(Spans&&... spans)
     {
         return tuple_vpart(std::forward_as_tuple(spans...));
