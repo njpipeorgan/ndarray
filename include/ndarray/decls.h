@@ -58,5 +58,9 @@ using irregular_elem_const_iter = typename irregular_elem_iter<View, true>;
 
 template<typename SrcArray, typename DstArray>
 inline void data_copy(const SrcArray& src, DstArray& dst);
+template<typename SrcArray, typename DstArray>
+inline void aliased_data_copy(const SrcArray& src, DstArray& dst, size_t size);
+template<typename SrcArray, typename DstArray>
+inline void no_alias_data_copy(const SrcArray& src, DstArray& dst, size_t size);
 
 }

@@ -422,7 +422,6 @@ public:
     static constexpr bool   _is_unit_step_v = IsUnitStep;
     static constexpr bool   _is_integral_v  = std::is_integral_v<_elem_t>;
     using _step_t  = std::conditional_t<_is_unit_step_v, empty_struct, _elem_t>;
-    static constexpr view_type _my_view_type_v = view_type::array;
 
     static_assert(std::is_arithmetic_v<_elem_t>);
 
@@ -646,6 +645,7 @@ constexpr inline auto make_range_if_arithmetic(NonArithmetic&& arg)
     return arg;
 }
 
+// create array from range view
 template<typename T, bool IsUnitStep>
 inline auto make_array(const range_view<T, IsUnitStep>& range)
 {

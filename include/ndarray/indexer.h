@@ -233,7 +233,7 @@ std::pair<size_t, indexer_collapsing_t<Indexer, Span>> collapse_indexer(
 
 // recursive implementation of get_collapsed_view
 // updates base_offset, new_indexers, and base_stride
-template<view_type ViewType, size_t IC, size_t SC, size_t SD, typename NewTuple, typename IndexerTuple, typename SpanTuple>
+template<array_obj_type ViewType, size_t IC, size_t SC, size_t SD, typename NewTuple, typename IndexerTuple, typename SpanTuple>
 void get_collapsed_view_impl(size_t& base_offset, NewTuple& new_indexers, size_t& base_stride, 
                              const size_t* dims, IndexerTuple&& indexers, SpanTuple&& spans)
 {
@@ -275,7 +275,7 @@ deduce_view_type_t<T, IndexerTuple, SpanTuple> get_collapsed_view(
 {
     using derived_type = deduce_view_type<T, IndexerTuple, SpanTuple>;
     using view_t       = typename derived_type::type;
-    constexpr view_type view_type_v = derived_type::_view_type_v;
+    constexpr array_obj_type view_type_v = derived_type::_view_type_v;
 
     typename view_t::_indexers_t new_indexers{};
     size_t base_offset = 0;

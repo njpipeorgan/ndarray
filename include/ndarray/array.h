@@ -21,7 +21,6 @@ public:
     using _data_t     = std::vector<T>;
     using _dims_t     = std::array<size_t, _depth_v>;
     using _indexers_t = n_all_indexer_tuple_t<_depth_v>;
-    static constexpr view_type _my_view_type_v = view_type::array;
     static_assert(_depth_v > 0);
 
 public:
@@ -35,7 +34,7 @@ public:
         resize();
     }
 
-    template<typename View, view_type = View::_my_view_type_v>
+    template<typename View>
     array(const View& other) :
         dims_{other.dimensions()}
     {
@@ -60,7 +59,7 @@ public:
 
 
     // copy data from another view, assuming identical dimensions
-    template<typename View, view_type = View::_my_view_type_v>
+    template<typename View>
     _my_type& operator=(const View& other)
     {
         data_copy(other, *this);
@@ -344,47 +343,9 @@ public:
         return tuple_vpart(std::forward_as_tuple(spans...));
     }
 
-    template<typename Function>
-    void traverse(Function fn)
-    {
-        std::for_each_n(data(), size(), fn);
-    }
-
-    template<typename Function>
-    void traverse(Function fn) const
-    {
-        std::for_each_n(data(), size(), fn);
-    }
-
-    // return a forward-iterator-like function object
-    auto traverse_iterator()
-    {
-        auto iter =
-            [base_ptr=this->data()]() mutable
-        {
-            _elem_t& val = *base_ptr;
-            ++base_ptr;
-            return val;
-        };
-        return iter;
-    }
-
-    // return a forward-iterator-like function object
-    auto traverse_iterator() const
-    {
-        auto iter =
-            [base_ptr=this->data()]() mutable
-        {
-            const _elem_t& val = *base_ptr;
-            ++base_ptr;
-            return val;
-        };
-        return iter;
-    }
-
     // check whether having same dimensions with another array, starting at specific levels
     template<size_t MyStartLevel = 0, size_t OtherStartLevel = 0, typename OtherArray>
-    bool has_same_dimensions(const OtherArray& other) const
+    bool check_size_with(const OtherArray& other) const
     {
         if constexpr (MyStartLevel == _depth_v || OtherStartLevel == OtherArray::_depth_v)
             return false;
@@ -392,7 +353,7 @@ public:
             return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>();
         else
             return this->dimension<MyStartLevel>() == other.dimension<OtherStartLevel>() &&
-            has_same_dimensions<MyStartLevel + 1, OtherStartLevel + 1>(other);
+            check_size_with<MyStartLevel + 1, OtherStartLevel + 1>(other);
     }
 
 
@@ -475,12 +436,14 @@ public:
 };
 
 
+// create array from std::vector<T>
 template<typename T>
 auto make_array(const std::vector<T>& data)
 {
     return array<T, 1>(data, {data.size()});
 }
 
+// create array from std::vector<T>
 template<typename T>
 auto make_array(std::vector<T>&& data)
 {

@@ -8,39 +8,32 @@
 namespace ndarray
 {
 
-template<size_t NewDepth, typename Array>
-inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, lv_array_access_tag)
+template<size_t NewDepth, typename T, size_t Depth>
+inline auto _reshape_impl(const array<T, Depth>& src, std::array<size_t, NewDepth> dims)
 {
-    using elem_t = typename remove_cvref_t<Array>::_elem_t;
-    return array<elem_t, NewDepth>(get_vector(std::forward<Array>(src)), dims);
+    return array<T, NewDepth>(get_vector(src), dims);
 }
-template<size_t NewDepth, typename Array>
-inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, rv_array_access_tag)
+template<size_t NewDepth, typename T, size_t Depth>
+inline auto _reshape_impl(array<T, Depth>&& src, std::array<size_t, NewDepth> dims)
 {
-    using elem_t = typename remove_cvref_t<Array>::_elem_t;
-    return array<elem_t, NewDepth>(get_vector(std::forward<Array>(src)), dims);
+    return array<T, NewDepth>(get_vector(std::move(src)), dims);
 }
-template<size_t NewDepth, typename Array>
-inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, iterator_access_tag)
+template<size_t NewDepth, typename View>
+inline auto _reshape_impl(View&& src, std::array<size_t, NewDepth> dims)
 {
-    using elem_t = typename remove_cvref_t<Array>::_elem_t;
+    using elem_t = array_elem_of_t<View>;
     const size_t src_size  = src.size();
     std::vector<elem_t> data(src_size);
     src.copy_to(data.data(), src_size);
     return array<elem_t, NewDepth>(std::move(data), dims);
-}
-template<size_t NewDepth, typename Array>
-inline auto _reshape_impl(Array&& src, std::array<size_t, NewDepth> dims, traverse_access_tag)
-{
-    return _reshape_impl<NewDepth>(
-        std::forward<Array>(src), dims, std::integral_constant<access_type, access_type::iterator>{});
 }
 
 // reshape an array to a new set of dimensions
 template<size_t NewDepth, typename Array>
 inline auto reshape(Array&& src, std::array<size_t, NewDepth> dims)
 {
-    auto ret = _reshape_impl<NewDepth>(std::forward<decltype(src)>(src), dims, access_type_tag<Array&&>{});
+    array<array_elem_of_t<Array>, NewDepth> ret = 
+        _reshape_impl<NewDepth>(std::forward<decltype(src)>(src), dims);
     ret._check_size();
     return ret;
 }
@@ -49,7 +42,8 @@ inline auto reshape(Array&& src, std::array<size_t, NewDepth> dims)
 template<typename Array>
 inline auto flatten(Array&& src)
 {
-    auto ret = _reshape_impl<1>(std::forward<Array>(src), {src.size()}, access_type_tag<Array>{});
+    array<array_elem_of_t<Array>, 1> ret = 
+        _reshape_impl<1>(std::forward<Array>(src), {src.size()});
     NDARRAY_ASSERT(ret._check_size()); // no necessary
     return ret;
 }
@@ -80,8 +74,8 @@ inline auto partition(Array&& src, std::array<size_t, PartDepth> part_dims)
         new_dims[i + part_depth_v] = dims[i];
     }
 
-    auto ret = _reshape_impl<new_depth_v>(
-        std::forward<Array>(src), new_dims, std::integral_constant<access_type, access_type_of_v<Array>>{});
+    array<array_elem_of_t<Array>, new_depth_v> ret = 
+        _reshape_impl<new_depth_v>(std::forward<Array>(src), new_dims);
     NDARRAY_ASSERT(ret._check_size()); // not necessary
     return ret;
 }
@@ -107,7 +101,10 @@ inline auto element_extract(const DataArray& data, const IndexArray& index)
     using elem_t  = array_elem_of_t<DataArray>;
     constexpr size_t data_depth_v  = array_depth_of_v<DataArray>;
     constexpr size_t index_depth_v = array_depth_of_v<IndexArray>;
+
     static_assert(data_depth_v == 1 ? index_depth_v <= 2 : index_depth_v == 2);
+    if constexpr (data_depth_v > 1 || index_depth_v == 2)
+        assert(index.dimension<1>() == data_depth_v);
 
     size_t size = index.dimension<0>();
 

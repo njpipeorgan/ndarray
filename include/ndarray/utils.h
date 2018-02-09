@@ -4,17 +4,24 @@
 #include <algorithm>
 
 #ifdef _DEBUG
-#define ENABLE_NDARRAY_ASSERT 1
-#define ENABLE_NDARRAY_CHECK_BOUND 1
+#define ENABLE_NDARRAY_DEBUG
 #endif
 
-#if ENABLE_NDARRAY_ASSERT
+#ifdef ENABLE_NDARRAY_DEBUG
+#define ENABLE_NDARRAY_ASSERT
+#define ENABLE_NDARRAY_CHECK_BOUND
+#define NDARRAY_DEBUG(x) (x)
+#else
+#define NDARRAY_DEBUG(x) (0)
+#endif
+
+#ifdef ENABLE_NDARRAY_ASSERT
 #define NDARRAY_ASSERT(x) assert(x)
-#else 
-#define NDARRAY_ASSERT(x) 0
+#else
+#define NDARRAY_ASSERT(x) (0)
 #endif
 
-#if ENABLE_NDARRAY_CHECK_BOUND
+#ifdef ENABLE_NDARRAY_CHECK_BOUND
 #define NDARRAY_CHECK_BOUND_SCALAR(i, size) assert(_check_bound_scalar(i, size))
 #define NDARRAY_CHECK_BOUND_VECTOR(v, size) assert(_check_bound_vector(v, size))
 #else 
