@@ -287,6 +287,16 @@ template<typename T, typename IndexerTuple, typename SpanTuple>
 using deduce_view_type_t = typename deduce_view_type<T, IndexerTuple, SpanTuple>::type;
 
 
+template<typename T, typename IndexerTuple, typename SpanTuple>
+struct deduce_part_array_type
+{
+    using collapsed_t = indexer_tuple_collapsing_t<IndexerTuple, SpanTuple>;
+    using type        = array<T, indexer_tuple_depth_v<collapsed_t>>;
+};
+template<typename T, typename IndexerTuple, typename SpanTuple>
+using deduce_part_array_type_t = typename deduce_part_array_type<T, IndexerTuple, SpanTuple>::type;
+
+
 // gives type U if SpanTuple contains Depth integers
 template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
 struct deduce_view_or_elem_type
@@ -297,6 +307,18 @@ struct deduce_view_or_elem_type
 };
 template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
 using deduce_view_or_elem_type_t = typename deduce_view_or_elem_type<U, T, Depth, IndexerTuple, SpanTuple>::type;
+
+// gives type U if SpanTuple contains Depth integers
+template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
+struct deduce_part_or_elem_type
+{
+    using type = std::conditional_t<
+        std::tuple_size_v<SpanTuple> == Depth && is_all_int_tuple_v<SpanTuple>,
+        U, deduce_part_array_type_t<T, IndexerTuple, SpanTuple>>;
+};
+template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
+using deduce_part_or_elem_type_t = typename deduce_part_or_elem_type<U, T, Depth, IndexerTuple, SpanTuple>::type;
+
 
 
 // identify_view_iter_type gives the category of iterator in terms of its view

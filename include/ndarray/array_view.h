@@ -35,6 +35,31 @@ namespace ndarray
 // extracted from the same base array.
 //
 
+
+// create array from array view
+template<typename T, typename IndexerTuple>
+auto make_array(const simple_view<T, IndexerTuple>& view)
+{
+    using view_t = simple_view<T, IndexerTuple>;
+    return array<typename view_t::_no_const_elem_t, view_t::_depth_v>(view);
+}
+
+// create array from array view
+template<typename T, typename IndexerTuple>
+auto make_array(const regular_view<T, IndexerTuple>& view)
+{
+    using view_t = regular_view<T, IndexerTuple>;
+    return array<typename view_t::_no_const_elem_t, view_t::_depth_v>(view);
+}
+
+// create array from array view
+template<typename T, typename IndexerTuple>
+auto make_array(const irregular_view<T, IndexerTuple>& view)
+{
+    using view_t = irregular_view<T, IndexerTuple>;
+    return array<typename view_t::_no_const_elem_t, view_t::_depth_v>(view);
+}
+
 template<typename T, typename IndexerTuple>
 class array_view_base
 {
@@ -189,6 +214,13 @@ public:
         vpart(Spans&&... spans) const
     {
         return tuple_vpart(std::forward_as_tuple(spans...));
+    }
+
+    template<typename... Spans>
+    deduce_part_array_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+        part(Spans&&... spans) const
+    {
+        return make_array(tuple_vpart(std::forward_as_tuple(spans...)));
     }
 
     // check whether having same dimensions with another array, starting at specific levels
@@ -1770,29 +1802,5 @@ protected:
 
 };
 
-
-// create array from array view
-template<typename T, typename IndexerTuple>
-auto make_array(const simple_view<T, IndexerTuple>& view)
-{
-    using view_t = simple_view<T, IndexerTuple>;
-    return array<typename view_t::_no_const_elem_t, view_t::_depth_v>(view);
-}
-
-// create array from array view
-template<typename T, typename IndexerTuple>
-auto make_array(const regular_view<T, IndexerTuple>& view)
-{
-    using view_t = regular_view<T, IndexerTuple>;
-    return array<typename view_t::_no_const_elem_t, view_t::_depth_v>(view);
-}
-
-// create array from array view
-template<typename T, typename IndexerTuple>
-auto make_array(const irregular_view<T, IndexerTuple>& view)
-{
-    using view_t = irregular_view<T, IndexerTuple>;
-    return array<typename view_t::_no_const_elem_t, view_t::_depth_v>(view);
-}
 
 }

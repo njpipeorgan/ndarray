@@ -56,8 +56,7 @@ public:
         // caller should check the dimensions
         NDARRAY_ASSERT(_check_size());
     }
-
-
+    
     // copy data from another view, assuming identical dimensions
     template<typename View>
     _my_type& operator=(const View& other)
@@ -115,8 +114,20 @@ public:
 
     // automatically calls at() or vpart(), depending on its arguments
     template<typename... Anys>
+    deduce_part_or_elem_type_t<_elem_t, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
+        operator()(Anys&&... anys) &&
+    {
+        constexpr bool is_complete_index = sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>;
+        if constexpr (is_complete_index)
+            return this->at(std::forward<decltype(anys)>(anys)...);
+        else
+            return this->part(std::forward<decltype(anys)>(anys)...);
+    }
+
+    // automatically calls at() or vpart(), depending on its arguments
+    template<typename... Anys>
     deduce_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
-        operator()(Anys&&... anys)
+        operator()(Anys&&... anys) &
     {
         constexpr bool is_complete_index = sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>;
         if constexpr (is_complete_index)
@@ -128,7 +139,7 @@ public:
     // automatically calls at() or vpart(), depending on its arguments
     template<typename... Anys>
     deduce_view_or_elem_type_t<const _elem_t&, const _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>> 
-        operator()(Anys&&... anys) const
+        operator()(Anys&&... anys) const &
     {
         constexpr bool is_complete_index = sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>;
         if constexpr (is_complete_index)
@@ -140,7 +151,7 @@ public:
 
     // indexing with a tuple/array of integers
     template<typename Tuple>
-    _elem_t& tuple_at(const Tuple& indices)
+    _elem_t tuple_at(const Tuple& indices) &&
     {
         static_assert(std::tuple_size_v<Tuple> == _depth_v, "incorrect number of indices");
         return _linear_at(_get_position(indices));
@@ -148,7 +159,15 @@ public:
 
     // indexing with a tuple/array of integers
     template<typename Tuple>
-    const _elem_t& tuple_at(const Tuple& indices) const
+    _elem_t& tuple_at(const Tuple& indices) &
+    {
+        static_assert(std::tuple_size_v<Tuple> == _depth_v, "incorrect number of indices");
+        return _linear_at(_get_position(indices));
+    }
+
+    // indexing with a tuple/array of integers
+    template<typename Tuple>
+    const _elem_t& tuple_at(const Tuple& indices) const &
     {
         static_assert(std::tuple_size_v<Tuple> == _depth_v, "incorrect number of indices");
         return _linear_at(_get_position(indices));
@@ -156,24 +175,36 @@ public:
 
     // indexing with multiple integers
     template<typename... Ints>
-    _elem_t& at(Ints... ints)
+    _elem_t at(Ints... ints) &&
     {
         return tuple_at(std::make_tuple(ints...));
     }
 
     // indexing with multiple integers
     template<typename... Ints>
-    const _elem_t& at(Ints... ints) const
+    _elem_t& at(Ints... ints) &
     {
         return tuple_at(std::make_tuple(ints...));
     }
 
-    _elem_t& operator[](size_t pos)
+    // indexing with multiple integers
+    template<typename... Ints>
+    const _elem_t& at(Ints... ints) const &
+    {
+        return tuple_at(std::make_tuple(ints...));
+    }
+
+    _elem_t operator[](size_t pos) &&
     {
         return data_[pos];
     }
 
-    const _elem_t& operator[](size_t pos) const
+    _elem_t& operator[](size_t pos) &
+    {
+        return data_[pos];
+    }
+
+    const _elem_t& operator[](size_t pos) const &
     {
         return data_[pos];
     }
@@ -304,43 +335,69 @@ public:
         return cend();
     }
 
-    _data_t& _get_vector()
+    _data_t _get_vector() &&
+    {
+        return std::move(data_);
+    }
+    _data_t& _get_vector() &
     {
         return data_;
     }
-    const _data_t& _get_vector() const
+    const _data_t& _get_vector() const &
     {
         return data_;
-    }
-
-    template<typename SpanTuple>
-    deduce_view_type_t<const _elem_t, _indexers_t, SpanTuple>
-        tuple_vpart(SpanTuple&& spans) const
-    {
-        return get_collapsed_view(
-            data(), dims_.data(), _indexers_t{}, std::forward<decltype(spans)>(spans));
     }
 
     template<typename SpanTuple>
     deduce_view_type_t<_elem_t, _indexers_t, SpanTuple>
-        tuple_vpart(SpanTuple&& spans)
+        tuple_vpart(SpanTuple&& spans) &&
+    {
+        static_assert(_always_false_v<SpanTuple>, "cannot call tuple_vpart() on an r-value array.");
+    }
+
+    template<typename SpanTuple>
+    deduce_view_type_t<_elem_t, _indexers_t, SpanTuple>
+        tuple_vpart(SpanTuple&& spans) &
+    {
+        return get_collapsed_view(
+            data(), dims_.data(), _indexers_t{}, std::forward<decltype(spans)>(spans));
+    }
+
+    template<typename SpanTuple>
+    deduce_view_type_t<const _elem_t, _indexers_t, SpanTuple>
+        tuple_vpart(SpanTuple&& spans) const &
     {
         return get_collapsed_view(
             data(), dims_.data(), _indexers_t{}, std::forward<decltype(spans)>(spans));
     }
 
     template<typename... Spans>
-    deduce_view_type_t<const _elem_t, _indexers_t, std::tuple<Spans...>>
-        vpart(Spans&&... spans) const
+    deduce_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+        vpart(Spans&&... spans) &&
     {
-        return tuple_vpart(std::forward_as_tuple(spans...));
+        static_assert(_always_false_v<Spans...>, "cannot call vpart() on an r-value array.");
     }
 
     template<typename... Spans>
     deduce_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
-        vpart(Spans&&... spans)
+        vpart(Spans&&... spans) &
     {
-        return tuple_vpart(std::forward_as_tuple(spans...));
+        return this->tuple_vpart(std::forward_as_tuple(spans...));
+    }
+
+    template<typename... Spans>
+    deduce_view_type_t<const _elem_t, _indexers_t, std::tuple<Spans...>>
+        vpart(Spans&&... spans) const &
+    {
+        return this->tuple_vpart(std::forward_as_tuple(spans...));
+    }
+
+    template<typename... Spans>
+    deduce_part_array_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+        part(Spans&&... spans) const
+    {
+        auto view = this->tuple_vpart(std::forward_as_tuple(spans...));
+        return make_array(view);
     }
 
     // check whether having same dimensions with another array, starting at specific levels
@@ -409,13 +466,19 @@ public:
             return dimension<LastLevel - 1>() * _total_size_impl<LastLevel - 1, FirstLevel>();
     }
 
-    _elem_t& _linear_at(size_t pos)
+    _elem_t _linear_at(size_t pos) &&
     {
         NDARRAY_ASSERT(pos < size());
         return data_[pos];
     }
 
-    const _elem_t& _linear_at(size_t pos) const
+    _elem_t& _linear_at(size_t pos) &
+    {
+        NDARRAY_ASSERT(pos < size());
+        return data_[pos];
+    }
+
+    const _elem_t& _linear_at(size_t pos) const &
     {
         NDARRAY_ASSERT(pos < size());
         return data_[pos];
