@@ -577,12 +577,8 @@ public:
     void copy_to(Iter dst, size_t size) const
     {
         auto src = this->element_cbegin();
-        for (size_t i = 0; i < size; ++i)
-        {
+        for (size_t i = 0; i < size; ++i, ++dst, ++src)
             *dst = *src;
-            ++dst;
-            ++src;
-        }
     }
 
     // copy data to destination, assuming no aliasing
@@ -645,7 +641,7 @@ constexpr inline auto make_range_if_arithmetic(NonArithmetic&& arg)
     return arg;
 }
 
-// create array from range view
+// create array from range_view
 template<typename T, bool IsUnitStep>
 inline auto make_array(const range_view<T, IsUnitStep>& range)
 {

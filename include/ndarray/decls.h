@@ -32,6 +32,8 @@ template<typename T, typename IndexerTuple>
 class irregular_view;
 template<typename T, bool IsUnitStep>
 class range_view;
+template<typename T, size_t Depth>
+class repeated_view;
 
 template<typename SubView, bool IsExplicitConst>
 class regular_view_iter;
@@ -39,15 +41,17 @@ template<typename SubView, typename BaseView, bool IsExplicitConst>
 class irregular_view_iter;
 template<typename T, bool IsUnitStep, bool IsIntegral = std::is_integral_v<T>>
 class range_view_iter;
+template<typename SubView>
+class repeated_view_iter;
 
-template<typename ViewCref, size_t IndicesDepth>
-class irregular_indices;
 template<typename T, bool IsExplicitConst = false>
 class simple_elem_iter;
 template<typename T, bool IsExplicitConst = false>
 class regular_elem_iter;
 template<typename View, bool IsExplicitConst = false>
 class irregular_elem_iter;
+template<typename T>
+class repeated_view_elem_iter;
 
 template<typename T>
 using simple_elem_const_iter = typename simple_elem_iter<T, true>;

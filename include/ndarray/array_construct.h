@@ -77,13 +77,22 @@ inline array<std::invoke_result_t<Function, array_or_range_elem_of_t<Arrays>...>
 }
 
 template<typename Value, typename... Ints>
-inline auto const_table(Value value, Ints... ints)
+inline auto table_const(Value value, Ints... ints)
 {
     constexpr size_t depth_v = sizeof...(Ints);
     using elem_t = decltype(value);
-    std::array<size_t, depth_v> dims = {ints...};
+    std::array<size_t, depth_v> dims = {size_t(ints)...};
     std::vector<elem_t> data(size_t((ints * ... * size_t(1))), value);
     return array<elem_t, depth_v>{std::move(data), dims};
+}
+
+template<typename Value, typename... Ints>
+inline auto vtable_const(Value value, Ints... ints)
+{
+    constexpr size_t depth_v = sizeof...(Ints);
+    using elem_t = decltype(value);
+    std::array<size_t, depth_v> dims = {size_t(ints)...};
+    return repeated_view<elem_t, depth_v>{value, dims};
 }
 
 

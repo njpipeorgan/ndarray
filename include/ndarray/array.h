@@ -102,7 +102,7 @@ public:
     }
 
     // array of dimensions
-    std::array<size_t, _depth_v> dimensions() const
+    _dims_t dimensions() const
     {
         return dims_;
     }
@@ -177,33 +177,36 @@ public:
     template<typename... Ints>
     _elem_t at(Ints... ints) &&
     {
-        return tuple_at(std::make_tuple(ints...));
+        return std::move(*this).tuple_at(std::make_tuple(ints...));
     }
 
     // indexing with multiple integers
     template<typename... Ints>
     _elem_t& at(Ints... ints) &
     {
-        return tuple_at(std::make_tuple(ints...));
+        return this->tuple_at(std::make_tuple(ints...));
     }
 
     // indexing with multiple integers
     template<typename... Ints>
     const _elem_t& at(Ints... ints) const &
     {
-        return tuple_at(std::make_tuple(ints...));
+        return this->tuple_at(std::make_tuple(ints...));
     }
 
+    // linear accessing
     _elem_t operator[](size_t pos) &&
     {
         return data_[pos];
     }
 
+    // linear accessing
     _elem_t& operator[](size_t pos) &
     {
         return data_[pos];
     }
 
+    // linear accessing
     const _elem_t& operator[](size_t pos) const &
     {
         return data_[pos];
@@ -232,15 +235,15 @@ public:
     }
     simple_elem_const_iter<_elem_t> element_cend() const
     {
-        return data() + size();
+        return {data() + size()};
     }
     simple_elem_const_iter<_elem_t> element_begin() const
     {
-        return element_cbegin();
+        return this->element_cbegin();
     }
     simple_elem_const_iter<_elem_t> element_end() const
     {
-        return element_cend();
+        return this->element_cend();
     }
 
     template<bool IsExplicitConst, size_t Level>

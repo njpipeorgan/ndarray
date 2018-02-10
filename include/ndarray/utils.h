@@ -41,7 +41,12 @@ using remove_cvref_t = typename remove_cvref<T>::type;
 
 // used to give template argument dependent false for static_assert
 template<typename... T>
-constexpr bool _always_false_v = false;
+struct _always_false
+{
+    static constexpr bool value = false;
+};
+template<typename... T>
+constexpr bool _always_false_v = _always_false<T...>::value;
 
 
 // constructed from arbitrary arguments and gives nothing
@@ -50,6 +55,24 @@ struct empty_struct
     template<typename... T>
     constexpr empty_struct(T...) noexcept {}
 };
+
+// calculate the maximum of two template arguments
+template<size_t I, size_t J>
+struct _mp_max
+{
+    static constexpr size_t value = I > J ? I : J;
+};
+template<size_t I, size_t J>
+constexpr size_t _mp_max_v = _mp_max<I, J>::value;
+
+// calculate the minimum of two template arguments
+template<size_t I, size_t J>
+struct _mp_min
+{
+    static constexpr size_t value = I < J ? I : J;
+};
+template<size_t I, size_t J>
+constexpr size_t _mp_min_v = _mp_min<I, J>::value;
 
 
 // tuple of T repeated n times

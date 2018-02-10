@@ -425,12 +425,8 @@ public:
     void copy_to(Iter dst, size_t size) const
     {
         auto src = this->base_ptr_;
-        for (size_t i = 0; i < size; ++i)
-        {
+        for (size_t i = 0; i < size; ++i, ++dst, ++src)
             *dst = *src;
-            ++dst;
-            ++src;
-        }
     }
 
     // copy data to destination, assuming no aliasing
@@ -446,12 +442,8 @@ public:
     {
         static_assert(!_is_const_v);
         auto dst = this->base_ptr_;
-        for (size_t i = 0; i < size; ++i)
-        {
+        for (size_t i = 0; i < size; ++i, ++dst, ++src)
             *dst = *src;
-            ++dst;
-            ++src;
-        }
     }
 
     // copy data from source, assuming no aliasing
@@ -603,12 +595,8 @@ public:
     {
         auto src = this->base_ptr_;
         const auto stride = this->stride();
-        for (size_t i = 0; i < size; ++i)
-        {
+        for (size_t i = 0; i < size; ++i, ++dst, src += stride)
             *dst = *src;
-            src += stride;
-            ++dst;
-        }
     }
 
     // copy data to destination, assuming no aliasing
@@ -625,12 +613,8 @@ public:
         static_assert(!_is_const_v);
         auto dst = this->base_ptr_;
         const auto stride = this->stride();
-        for (size_t i = 0; i < size; ++i)
-        {
+        for (size_t i = 0; i < size; ++i, dst += stride, ++src)
             *dst = *src;
-            dst += stride;
-            ++src;
-        }
     }
 
     // copy data from source, assuming no aliasing
