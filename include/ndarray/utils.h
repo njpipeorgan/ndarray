@@ -91,6 +91,55 @@ struct repeat_tuple<0, T, std::tuple<Ts...>>
 template<size_t N, typename T>
 using repeat_tuple_t = typename repeat_tuple<N, T>::type;
 
+template<size_t N, typename Dropped, typename Taken = std::tuple<>>
+struct takedrop_tuple_n_impl;
+template<size_t N, typename Drop1, typename... Drops, typename... Takes>
+struct takedrop_tuple_n_impl<N, std::tuple<Drop1, Drops...>, std::tuple<Takes...>> :
+    takedrop_tuple_n_impl<N - 1, std::tuple<Drops...>, std::tuple<Takes..., Drop1>> {};
+template<typename Drop1, typename... Drops, typename... Takes>
+struct takedrop_tuple_n_impl<0, std::tuple<Drop1, Drops...>, std::tuple<Takes...>>
+{
+    using drop_t = std::tuple<Drop1, Drops...>;
+    using take_t = std::tuple<Takes...>;
+};
+template<size_t N, typename... Takes>
+struct takedrop_tuple_n_impl<N, std::tuple<>, std::tuple<Takes...>>
+{
+    static_assert(N == 0, "not enough tuple elements.");
+    using drop_t = std::tuple<>;
+    using take_t = std::tuple<Takes...>;
+};
+template<size_t N, typename Tuple>
+struct drop_tuple_n
+{
+    using type = typename takedrop_tuple_n_impl<N, Tuple>::drop_t;
+};
+template<size_t N, typename Tuple>
+struct take_tuple_n
+{
+    using type = typename takedrop_tuple_n_impl<N, Tuple>::take_t;
+};
+template<size_t N, typename Tuple>
+using drop_tuple_n_t = typename drop_tuple_n<N, Tuple>::type;
+template<size_t N, typename Tuple>
+using take_tuple_n_t = typename take_tuple_n<N, Tuple>::type;
+
+template<size_t R, typename Pad, typename Tuple>
+struct pad_right_tuple_impl;
+template<size_t R, typename Pad, typename... Ts>
+struct pad_right_tuple_impl<R, Pad, std::tuple<Ts...>> :
+    pad_right_tuple_impl<R - 1, Pad, std::tuple<Ts..., Pad>> {};
+template<typename Pad, typename... Ts>
+struct pad_right_tuple_impl<0, Pad, std::tuple<Ts...>>
+{
+    using type = std::tuple<Ts...>;
+};
+template<size_t N, typename Pad, typename Tuple>
+struct pad_right_tuple :
+    pad_right_tuple_impl<_mp_max_v<N, std::tuple_size_v<Tuple>> -std::tuple_size_v<Tuple>, Pad, Tuple> {};
+template<size_t N, typename Pad, typename Tuple>
+using pad_right_tuple_t = typename pad_right_tuple<N, Pad, Tuple>::type;
+
 
 template<typename Return, typename X, typename Y>
 constexpr inline Return _add_if_negative(X x, Y y)
@@ -136,6 +185,60 @@ inline std::array<size_t, std::tuple_size_v<ArrayTuple>> size_of_array_tuple(con
     std::array<size_t, std::tuple_size_v<ArrayTuple>> sizes;
     _size_of_array_tuple_impl<0>(sizes.data(), arrays);
     return sizes;
+}
+
+template<typename SingleTuple, size_t... I>
+auto _tuple_repeat_impl(SingleTuple val, std::index_sequence<I...>)
+{
+    return std::make_tuple(std::get<0u * I>(val)...);
+}
+template<size_t N, typename T>
+repeat_tuple_t<N, T> tuple_repeat(T val)
+{
+    return _tuple_repeat_impl(std::make_tuple(val), std::make_index_sequence<N>{});
+}
+
+template<typename Tuple1, typename Tuple2, size_t... I1, size_t... I2>
+auto _tuple_catenate_impl(Tuple1&& t1, Tuple2&& t2, std::index_sequence<I1...>, std::index_sequence<I2...>)
+{
+    return std::make_tuple(std::get<I1>(std::forward<decltype(t1)>(t1))...,
+                           std::get<I2>(std::forward<decltype(t2)>(t2))...);
+}
+template<typename Tuple1, typename Tuple2>
+auto tuple_catenate(Tuple1&& t1, Tuple2&& t2)
+{
+    return _tuple_catenate_impl(std::forward<decltype(t1)>(t1), std::forward<decltype(t2)>(t2),
+                                std::make_index_sequence<std::tuple_size_v<remove_cvref_t<Tuple1>>>{},
+                                std::make_index_sequence<std::tuple_size_v<remove_cvref_t<Tuple2>>>{});
+}
+
+template<size_t N, typename Pad, typename Tuple>
+pad_right_tuple_t<N, Pad, remove_cvref_t<Tuple>> tuple_pad_right(Pad pad, Tuple&& tuple)
+{
+    constexpr size_t size_v     = std::tuple_size_v<remove_cvref_t<Tuple>>;
+    constexpr size_t pad_size_v = _mp_max_v<N, size_v> -size_v;
+    return tuple_catenate(std::forward<decltype(tuple)>(tuple), tuple_repeat<pad_size_v>(pad));
+}
+
+template<size_t IndexOffset = 0, typename Tuple, size_t... I>
+auto tuple_takedrop_impl(Tuple&& tuple, std::index_sequence<I...>)
+{
+    return std::make_tuple(std::get<I + IndexOffset>(std::forward<decltype(tuple)>(tuple))...);
+}
+
+template<size_t N, typename Tuple>
+take_tuple_n_t<N, remove_cvref_t<Tuple>> tuple_take(Tuple&& tuple)
+{
+    return tuple_takedrop_impl<0>(std::forward<decltype(tuple)>(tuple),
+                                  std::make_index_sequence<N>{});
+}
+template<size_t N, typename Tuple>
+drop_tuple_n_t<N, remove_cvref_t<Tuple>> tuple_drop(Tuple&& tuple)
+{
+    constexpr size_t size_v = std::tuple_size_v<remove_cvref_t<Tuple>>;
+    static_assert(size_v >= N, "not enough tuple elements.");
+    return tuple_takedrop_impl<N>(std::forward<decltype(tuple)>(tuple),
+                                  std::make_index_sequence<size_v - N>{});
 }
 
 

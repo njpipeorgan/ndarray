@@ -572,7 +572,7 @@ public:
         }
     }
 
-    // copy data to destination given size
+    // copy data to destination given size as hint
     template<typename Iter>
     void copy_to(Iter dst, size_t size) const
     {

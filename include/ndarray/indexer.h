@@ -270,10 +270,10 @@ void get_collapsed_view_impl(size_t& base_offset, NewTuple& new_indexers, size_t
 // given a view by base_ptr, dims, and its original indexers, 
 // derive a new view by collapsing span specifications into non-scalar indexers
 template<typename T, typename IndexerTuple, typename SpanTuple>
-deduce_view_type_t<T, IndexerTuple, SpanTuple> get_collapsed_view(
+deduce_array_view_type_t<T, IndexerTuple, SpanTuple> get_collapsed_view(
     T* base_ptr, const size_t* dims, IndexerTuple&& indexers, SpanTuple&& spans)
 {
-    using derived_type = deduce_view_type<T, IndexerTuple, SpanTuple>;
+    using derived_type = deduce_array_view_type<T, IndexerTuple, SpanTuple>;
     using view_t       = typename derived_type::type;
     constexpr array_obj_type view_type_v = derived_type::_view_type_v;
 

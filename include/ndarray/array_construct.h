@@ -81,9 +81,8 @@ inline auto table_const(Value value, Ints... ints)
 {
     constexpr size_t depth_v = sizeof...(Ints);
     using elem_t = decltype(value);
-    std::array<size_t, depth_v> dims = {size_t(ints)...};
     std::vector<elem_t> data(size_t((ints * ... * size_t(1))), value);
-    return array<elem_t, depth_v>{std::move(data), dims};
+    return array<elem_t, depth_v>{std::move(data), {size_t(ints)...}};
 }
 
 template<typename Value, typename... Ints>
@@ -91,8 +90,27 @@ inline auto vtable_const(Value value, Ints... ints)
 {
     constexpr size_t depth_v = sizeof...(Ints);
     using elem_t = decltype(value);
-    std::array<size_t, depth_v> dims = {size_t(ints)...};
-    return repeated_view<elem_t, depth_v>{value, dims};
+    return repeated_view<elem_t, depth_v>{value, {size_t(ints)...}};
+}
+
+template<typename T, size_t ArrayDepth, typename... Ints>
+inline auto vrepeat(array<T, ArrayDepth>&& arr, Ints... ints)
+{
+    constexpr size_t view_depth_v = sizeof...(Ints);
+    return rep_array_view<array<T, ArrayDepth>, view_depth_v>{std::move(arr), {size_t(ints)...}};
+}
+
+template<typename T, size_t ArrayDepth, typename... Ints>
+inline auto vrepeat(const array<T, ArrayDepth>& arr, Ints... ints)
+{
+    constexpr size_t view_depth_v = sizeof...(Ints);
+    return rep_array_view<array<T, ArrayDepth>, view_depth_v>{arr, {size_t(ints)...}};
+}
+
+template<typename View, typename... Ints>
+inline auto repeat(View&& view, Ints... ints)
+{
+    return make_array(vrepeat(make_array(std::forward<decltype(view)>(view)), ints...));
 }
 
 

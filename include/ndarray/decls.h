@@ -5,9 +5,6 @@
 namespace ndarray
 {
 
-template<typename T, size_t Depth>
-class array;
-
 class all_span;
 template<typename TFirst, typename TLast>
 class simple_span;
@@ -22,6 +19,8 @@ class simple_indexer;
 class regular_indexer;
 class irregular_indexer;
 
+template<typename T, size_t Depth>
+class array;
 template<typename T, typename IndexerTuple>
 class array_view_base;
 template<typename T, typename IndexerTuple>
@@ -34,6 +33,8 @@ template<typename T, bool IsUnitStep>
 class range_view;
 template<typename T, size_t Depth>
 class repeated_view;
+template<typename Array, size_t ViewDepth>
+class rep_array_view;
 
 template<typename SubView, bool IsExplicitConst>
 class regular_view_iter;

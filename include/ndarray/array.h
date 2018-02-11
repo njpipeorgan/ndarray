@@ -56,7 +56,7 @@ public:
         // caller should check the dimensions
         NDARRAY_ASSERT(_check_size());
     }
-    
+
     // copy data from another view, assuming identical dimensions
     template<typename View>
     _my_type& operator=(const View& other)
@@ -126,7 +126,7 @@ public:
 
     // automatically calls at() or vpart(), depending on its arguments
     template<typename... Anys>
-    deduce_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
+    deduce_array_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
         operator()(Anys&&... anys) &
     {
         constexpr bool is_complete_index = sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>;
@@ -138,7 +138,7 @@ public:
 
     // automatically calls at() or vpart(), depending on its arguments
     template<typename... Anys>
-    deduce_view_or_elem_type_t<const _elem_t&, const _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>> 
+    deduce_array_view_or_elem_type_t<const _elem_t&, const _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
         operator()(Anys&&... anys) const &
     {
         constexpr bool is_complete_index = sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>;
@@ -352,14 +352,14 @@ public:
     }
 
     template<typename SpanTuple>
-    deduce_view_type_t<_elem_t, _indexers_t, SpanTuple>
+    deduce_array_view_type_t<_elem_t, _indexers_t, SpanTuple>
         tuple_vpart(SpanTuple&& spans) &&
     {
         static_assert(_always_false_v<SpanTuple>, "cannot call tuple_vpart() on an r-value array.");
     }
 
     template<typename SpanTuple>
-    deduce_view_type_t<_elem_t, _indexers_t, SpanTuple>
+    deduce_array_view_type_t<_elem_t, _indexers_t, SpanTuple>
         tuple_vpart(SpanTuple&& spans) &
     {
         return get_collapsed_view(
@@ -367,7 +367,7 @@ public:
     }
 
     template<typename SpanTuple>
-    deduce_view_type_t<const _elem_t, _indexers_t, SpanTuple>
+    deduce_array_view_type_t<const _elem_t, _indexers_t, SpanTuple>
         tuple_vpart(SpanTuple&& spans) const &
     {
         return get_collapsed_view(
@@ -375,32 +375,44 @@ public:
     }
 
     template<typename... Spans>
-    deduce_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+    deduce_array_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
         vpart(Spans&&... spans) &&
     {
         static_assert(_always_false_v<Spans...>, "cannot call vpart() on an r-value array.");
     }
 
     template<typename... Spans>
-    deduce_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+    deduce_array_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
         vpart(Spans&&... spans) &
     {
         return this->tuple_vpart(std::forward_as_tuple(spans...));
     }
 
     template<typename... Spans>
-    deduce_view_type_t<const _elem_t, _indexers_t, std::tuple<Spans...>>
+    deduce_array_view_type_t<const _elem_t, _indexers_t, std::tuple<Spans...>>
         vpart(Spans&&... spans) const &
     {
         return this->tuple_vpart(std::forward_as_tuple(spans...));
+    }
+
+    template<typename SpanTuple>
+    deduce_part_array_type_t<_elem_t, _indexers_t, SpanTuple>
+        tuple_part(SpanTuple&& spans) const
+    {
+        if constexpr (is_all_a_type_tuple_v<all_span, remove_cvref_t<SpanTuple>>)
+            return *this;
+        else
+        {
+            auto view = this->tuple_vpart(std::forward<decltype(spans)>(spans));
+            return make_array(view);
+        }
     }
 
     template<typename... Spans>
     deduce_part_array_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
         part(Spans&&... spans) const
     {
-        auto view = this->tuple_vpart(std::forward_as_tuple(spans...));
-        return make_array(view);
+        return this->tuple_part(std::forward_as_tuple(spans...));
     }
 
     // check whether having same dimensions with another array, starting at specific levels
@@ -417,7 +429,7 @@ public:
     }
 
 
-    // copy data to destination given size, assuming no aliasing
+    // copy data to destination given size as hint, assuming no aliasing
     template<typename Iter>
     void copy_to(Iter dst, size_t size) const
     {
@@ -437,7 +449,7 @@ public:
         this->copy_to(dst, this->size());
     }
 
-    // copy data from source given size, assuming no aliasing
+    // copy data from source given size as hint, assuming no aliasing
     template<typename Iter>
     void copy_from(Iter src, size_t size)
     {
@@ -501,6 +513,20 @@ public:
 
 };
 
+
+// create array from array
+template<typename T, size_t Depth>
+auto make_array(const array<T, Depth>& arr)
+{
+    return arr;
+}
+
+// create array from array
+template<typename T, size_t Depth>
+auto make_array(array<T, Depth>&& arr)
+{
+    return std::move(arr);
+}
 
 // create array from std::vector<T>
 template<typename T>

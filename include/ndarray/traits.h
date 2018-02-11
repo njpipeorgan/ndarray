@@ -30,13 +30,14 @@ enum class indexer_type
 enum class array_obj_type
 {
     scalar,    // not used
-    vector, 
+    vector,
     array,
     simple,
     regular,
     irregular,
     range,
     repeated,
+    rep_array,
     invalid    // not used
 };
 //enum class access_type
@@ -87,10 +88,37 @@ template<typename... Ts>
 struct is_all_int_tuple_impl<std::tuple<Ts...>> :
     is_all_ints<Ts...> {};
 template<typename Tuple>
-struct is_all_int_tuple : 
+struct is_all_int_tuple :
     is_all_int_tuple_impl<remove_cvref_t<Tuple>> {};
 template<typename Tuple>
 constexpr bool is_all_int_tuple_v = is_all_int_tuple<Tuple>::value;
+
+
+template<typename U, typename... Ts>
+struct is_all_a_type;
+template<typename U, typename T1, typename... Ts>
+struct is_all_a_type<U, T1, Ts...>
+{
+    static constexpr bool value = std::is_same_v<remove_cvref_t<T1>, U> && is_all_a_type<U, Ts...>::value;
+};
+template<typename U>
+struct is_all_a_type<U> :
+    std::true_type {};
+template<typename U, typename... Ts>
+constexpr bool is_all_a_type_v = is_all_a_type<U, Ts...>::value;
+
+
+template<typename U, typename Tuple>
+struct is_all_a_type_tuple_impl :
+    std::false_type {};
+template<typename U, typename... Ts>
+struct is_all_a_type_tuple_impl<U, std::tuple<Ts...>> :
+    is_all_ints<Ts...> {};
+template<typename U, typename Tuple>
+struct is_all_a_type_tuple :
+    is_all_a_type_tuple_impl<U, remove_cvref_t<Tuple>> {};
+template<typename U, typename Tuple>
+constexpr bool is_all_a_type_tuple_v = is_all_a_type_tuple<U, Tuple>::value;
 
 
 template<typename Span>
@@ -210,10 +238,10 @@ constexpr size_t indexer_tuple_depth_v = indexer_tuple_depth<IndexerTuple>::valu
 template<typename SpanTuple>
 struct span_tuple_depth_impl;
 template<typename... Spans>
-struct span_tuple_depth_impl<std::tuple<Spans...>> : 
+struct span_tuple_depth_impl<std::tuple<Spans...>> :
     indexer_tuple_depth<std::tuple<indexer_collapsing_t<all_indexer, Spans>...>> {};
 template<typename SpanTuple>
-struct span_tuple_depth : 
+struct span_tuple_depth :
     span_tuple_depth_impl<remove_cvref_t<SpanTuple>> {};
 template<typename SpanTuple>
 constexpr size_t span_tuple_depth_v = span_tuple_depth<SpanTuple>::value;
@@ -287,7 +315,7 @@ constexpr std::array<size_t, indexer_tuple_depth_v<IndexerTuple>> make_non_scala
 
 
 template<typename T, typename IndexerTuple, typename SpanTuple>
-struct deduce_view_type
+struct deduce_array_view_type
 {
     using indexers_t = indexer_tuple_collapsing_t<IndexerTuple, SpanTuple>;
     static constexpr array_obj_type _view_type_v = identify_view_type_v<indexers_t>;
@@ -299,7 +327,20 @@ struct deduce_view_type
         void>>>;
 };
 template<typename T, typename IndexerTuple, typename SpanTuple>
-using deduce_view_type_t = typename deduce_view_type<T, IndexerTuple, SpanTuple>::type;
+using deduce_array_view_type_t = typename deduce_array_view_type<T, IndexerTuple, SpanTuple>::type;
+
+
+// gives type U if SpanTuple contains Depth integers
+template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
+struct deduce_array_view_or_elem_type
+{
+    using type = std::conditional_t<
+        std::tuple_size_v<SpanTuple> == Depth && is_all_int_tuple_v<SpanTuple>,
+        U, deduce_array_view_type_t<T, IndexerTuple, SpanTuple>>;
+};
+template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
+using deduce_array_view_or_elem_type_t = typename deduce_array_view_or_elem_type<U, T, Depth, IndexerTuple, SpanTuple>::type;
+
 
 
 template<typename T, typename IndexerTuple, typename SpanTuple>
@@ -311,17 +352,6 @@ struct deduce_part_array_type
 template<typename T, typename IndexerTuple, typename SpanTuple>
 using deduce_part_array_type_t = typename deduce_part_array_type<T, IndexerTuple, SpanTuple>::type;
 
-
-// gives type U if SpanTuple contains Depth integers
-template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
-struct deduce_view_or_elem_type
-{
-    using type = std::conditional_t<
-        std::tuple_size_v<SpanTuple> == Depth && is_all_int_tuple_v<SpanTuple>,
-        U, deduce_view_type_t<T, IndexerTuple, SpanTuple>>;
-};
-template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
-using deduce_view_or_elem_type_t = typename deduce_view_or_elem_type<U, T, Depth, IndexerTuple, SpanTuple>::type;
 
 // gives type U if SpanTuple contains Depth integers
 template<typename U, typename T, size_t Depth, typename IndexerTuple, typename SpanTuple>
@@ -338,14 +368,15 @@ using deduce_part_or_elem_type_t = typename deduce_part_or_elem_type<U, T, Depth
 template<typename T, size_t Depth, typename SpanTuple>
 struct deduce_repeated_view_type
 {
-    static constexpr size_t span_length_v = std::tuple_size_v<remove_cvref_t<SpanTuple>>;
-    static constexpr size_t span_depth_v  = span_tuple_depth_v<SpanTuple>;
-    static constexpr size_t new_depth_v   = Depth - span_length_v + span_depth_v;
+    static constexpr size_t span_size_v  = std::tuple_size_v<remove_cvref_t<SpanTuple>>;
+    static constexpr size_t span_depth_v = span_tuple_depth_v<SpanTuple>;
+    static constexpr size_t new_depth_v  = Depth - span_size_v + span_depth_v;
     static_assert(new_depth_v <= Depth);
     using type = repeated_view<T, new_depth_v>;
 };
 template<typename T, size_t Depth, typename SpanTuple>
 using deduce_repeated_view_type_t = typename deduce_repeated_view_type<T, Depth, SpanTuple>::type;
+
 
 // gives type U if SpanTuple contains Depth integers
 template<typename U, typename T, size_t Depth, typename SpanTuple>
@@ -358,6 +389,43 @@ struct deduce_repeated_view_or_elem_type
 template<typename U, typename T, size_t Depth, typename SpanTuple>
 using deduce_repeated_view_or_elem_type_t = typename deduce_repeated_view_or_elem_type<U, T, Depth, SpanTuple>::type;
 
+
+template<typename Array, size_t ViewDepth, typename SpanTuple>
+struct deduce_rep_array_view_type_impl
+{
+    using elem_t = typename Array::_elem_t;
+    static constexpr size_t array_depth_v     = Array::_depth_v;
+    static constexpr size_t view_depth_v      = ViewDepth;
+    using padded_spans_t = pad_right_tuple_t<array_depth_v + view_depth_v, all_span, SpanTuple>;
+    using view_spans_t   = take_tuple_n_t<array_depth_v, padded_spans_t>;
+    using array_spans_t  = drop_tuple_n_t<array_depth_v, padded_spans_t>;
+    static constexpr size_t new_view_depth_v  = span_tuple_depth_v<view_spans_t>;
+    static constexpr size_t new_array_depth_v = span_tuple_depth_v<array_spans_t>;
+    using type = std::conditional_t<new_view_depth_v == 0,
+        std::conditional_t<new_array_depth_v == 0, 
+        elem_t,
+        array<elem_t, new_array_depth_v>>,
+        std::conditional_t<new_array_depth_v == 0,
+        repeated_view<elem_t, new_view_depth_v>,
+        rep_array_view<array<elem_t, new_array_depth_v>, new_view_depth_v>>>;
+};
+template<typename Array, size_t ViewDepth, typename SpanTuple>
+struct deduce_rep_array_view_type :
+    deduce_rep_array_view_type_impl<Array, ViewDepth, remove_cvref_t<SpanTuple>> {};
+template<typename Array, size_t ViewDepth, typename SpanTuple>
+using deduce_rep_array_view_type_t = typename deduce_rep_array_view_type<Array, ViewDepth, SpanTuple>::type;
+
+// gives type U if SpanTuple contains Depth integers
+template<typename U, typename Array, size_t ViewDepth, typename SpanTuple>
+struct deduce_rep_array_view_or_elem_type
+{
+    static constexpr size_t depth_v = Array::_depth_v + ViewDepth;
+    using type = std::conditional_t<
+        std::tuple_size_v<remove_cvref_t<SpanTuple>> == depth_v && is_all_int_tuple_v<SpanTuple>,
+        U, deduce_rep_array_view_type_t<Array, ViewDepth, SpanTuple>>;
+};
+template<typename U, typename Array, size_t ViewDepth, typename SpanTuple>
+using deduce_rep_array_view_or_elem_type_t = typename deduce_rep_array_view_or_elem_type<U, Array, ViewDepth, SpanTuple>::type;
 
 
 // identify_view_iter_type gives the category of iterator in terms of its view
@@ -394,28 +462,31 @@ using deduce_view_iter_type_t = typename deduce_view_iter_type<
 
 
 template<typename Array>
-struct is_array_object_impl : 
+struct is_array_object_impl :
     std::false_type {};
 template<typename T, size_t Depth>
-struct is_array_object_impl<array<T, Depth>> : 
+struct is_array_object_impl<array<T, Depth>> :
     std::true_type {};
 template<typename T, typename IndexerTuple>
-struct is_array_object_impl<simple_view<T, IndexerTuple>> : 
+struct is_array_object_impl<simple_view<T, IndexerTuple>> :
     std::true_type {};
 template<typename T, typename IndexerTuple>
-struct is_array_object_impl<regular_view<T, IndexerTuple>> : 
+struct is_array_object_impl<regular_view<T, IndexerTuple>> :
     std::true_type {};
 template<typename T, typename IndexerTuple>
-struct is_array_object_impl<irregular_view<T, IndexerTuple>> : 
+struct is_array_object_impl<irregular_view<T, IndexerTuple>> :
     std::true_type {};
 template<typename T, bool IsUnitStep>
-struct is_array_object_impl<range_view<T, IsUnitStep>> : 
+struct is_array_object_impl<range_view<T, IsUnitStep>> :
     std::true_type {};
 template<typename T, size_t Depth>
-struct is_array_object_impl<repeated_view<T, Depth>> : 
+struct is_array_object_impl<repeated_view<T, Depth>> :
+    std::true_type {};
+template<typename Array, size_t ViewDepth>
+struct is_array_object_impl<rep_array_view<Array, ViewDepth>> :
     std::true_type {};
 template<typename Array>
-struct is_array_object : 
+struct is_array_object :
     is_array_object_impl<remove_cvref_t<Array>> {};
 template<typename Array>
 constexpr bool is_array_object_v = is_array_object<Array>::value;
@@ -521,8 +592,13 @@ struct array_obj_type_of_impl<repeated_view<T, Depth>>
 {
     static constexpr array_obj_type value = array_obj_type::repeated;
 };
+template<typename Array, size_t ViewDepth>
+struct array_obj_type_of_impl<rep_array_view<Array, ViewDepth>>
+{
+    static constexpr array_obj_type value = array_obj_type::rep_array;
+};
 template<typename Array>
-struct array_obj_type_of : 
+struct array_obj_type_of :
     array_obj_type_of_impl<remove_cvref_t<Array>> {};
 template<typename Array>
 constexpr array_obj_type array_obj_type_of_v = array_obj_type_of<Array>::value;

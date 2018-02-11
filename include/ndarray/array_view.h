@@ -23,7 +23,7 @@ namespace ndarray
 //   e.g. {all, scalar, all}, {regular, all}, {irregular, scalar}
 // 
 //
-// View type are derived by deduce_view_type_t based on indexer types.
+// View type are derived by deduce_array_view_type_t based on indexer types.
 //
 // typename T (_elem_t) reflects the constness of elements in the view, 
 // which is automatically derived from the constness of the base array.
@@ -176,7 +176,7 @@ public:
 
     // automatically calls at() or vpart(), depending on its arguments
     template<typename... Anys>
-    deduce_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
+    deduce_array_view_or_elem_type_t<_elem_t&, _elem_t, _depth_v, _indexers_t, std::tuple<Anys...>>
         operator()(Anys&&... anys) const
     {
         constexpr bool is_complete_index = sizeof...(Anys) == _depth_v && is_all_ints_v<Anys...>;
@@ -202,7 +202,7 @@ public:
     }
 
     template<typename SpanTuple>
-    deduce_view_type_t<_elem_t, _indexers_t, SpanTuple>
+    deduce_array_view_type_t<_elem_t, _indexers_t, SpanTuple>
         tuple_vpart(SpanTuple&& spans) const
     {
         return get_collapsed_view(
@@ -210,7 +210,7 @@ public:
     }
 
     template<typename... Spans>
-    deduce_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
+    deduce_array_view_type_t<_elem_t, _indexers_t, std::tuple<Spans...>>
         vpart(Spans&&... spans) const
     {
         return tuple_vpart(std::forward_as_tuple(spans...));
@@ -420,7 +420,7 @@ public:
     //    return iter;
     //}
 
-    // copy data to destination given size, assuming no aliasing
+    // copy data to destination given size as hint, assuming no aliasing
     template<typename Iter>
     void copy_to(Iter dst, size_t size) const
     {
@@ -436,7 +436,7 @@ public:
         this->copy_to(dst, this->size());
     }
 
-    // copy data from source given size, assuming no aliasing
+    // copy data from source given size as hint, assuming no aliasing
     template<typename Iter>
     void copy_from(Iter src, size_t size) const
     {
@@ -589,7 +589,7 @@ public:
     //    return iter;
     //}
 
-    // copy data to destination given size, assuming no aliasing
+    // copy data to destination given size as hint, assuming no aliasing
     template<typename Iter>
     void copy_to(Iter dst, size_t size) const
     {
@@ -606,7 +606,7 @@ public:
         this->copy_to(dst, this->size());
     }
 
-    // copy data from source given size, assuming no aliasing
+    // copy data from source given size as hint, assuming no aliasing
     template<typename Iter>
     void copy_from(Iter src, size_t size) const
     {
