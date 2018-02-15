@@ -519,7 +519,7 @@ public:
     }
 
     template<typename Span>
-    auto vpart(Span&& span)
+    auto vpart(Span&& span) const
     {
         static constexpr span_type span_v = classify_span_type_v<Span>;
         if constexpr (span_v == span_type::all)
@@ -554,10 +554,13 @@ public:
     }
     
 
-    template<typename Int, std::enable_if_t<std::is_integral_v<Int>, int> = 0>
-    _elem_t operator()(Int i) const
+    template<typename Any>
+    auto operator()(Any&& any) const
     {
-        return this->at(i);
+        if constexpr (std::is_integral_v<remove_cvref_t<Any>>)
+            return this->at(any);
+        else
+            return this->vpart(std::forward<decltype(any)>(any));
     }
 
     template<typename Function>

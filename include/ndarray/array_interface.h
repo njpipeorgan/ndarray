@@ -112,6 +112,16 @@ inline auto element_cbegin(const std::vector<int>& vec)
     return vec.begin();
 }
 
+template<typename View>
+inline auto dimensions(const View& view)
+{
+    return view.dimensions();
+}
+template<typename T>
+inline auto dimensions(const std::vector<T>& vec)
+{
+    return std::array<size_t, 1>{vec.size()};
+}
 
 // handles data copy between array and array view
 template<typename SrcArray, typename DstArray>

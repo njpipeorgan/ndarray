@@ -107,9 +107,14 @@ public:
         return dims_;
     }
 
-    const size_t* _identifier_ptr() const
+    const size_t* _dims_data() const
     {
         return dims_.data();
+    }
+
+    const size_t* _identifier_ptr() const
+    {
+        return _dims_data();
     }
 
     // automatically calls at() or vpart(), depending on its arguments

@@ -136,7 +136,7 @@ struct pad_right_tuple_impl<0, Pad, std::tuple<Ts...>>
 };
 template<size_t N, typename Pad, typename Tuple>
 struct pad_right_tuple :
-    pad_right_tuple_impl<_mp_max_v<N, std::tuple_size_v<Tuple>> -std::tuple_size_v<Tuple>, Pad, Tuple> {};
+    pad_right_tuple_impl<_mp_max_v<N, std::tuple_size_v<Tuple>> - std::tuple_size_v<Tuple>, Pad, Tuple> {};
 template<size_t N, typename Pad, typename Tuple>
 using pad_right_tuple_t = typename pad_right_tuple<N, Pad, Tuple>::type;
 

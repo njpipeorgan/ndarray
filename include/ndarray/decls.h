@@ -33,7 +33,7 @@ template<typename T, bool IsUnitStep>
 class range_view;
 template<typename T, size_t Depth>
 class repeated_view;
-template<typename Array, size_t ViewDepth>
+template<typename Array, size_t ViewDepth, bool StoreRef = false>
 class rep_array_view;
 
 template<typename SubView, bool IsExplicitConst>

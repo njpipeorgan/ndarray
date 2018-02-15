@@ -482,8 +482,8 @@ struct is_array_object_impl<range_view<T, IsUnitStep>> :
 template<typename T, size_t Depth>
 struct is_array_object_impl<repeated_view<T, Depth>> :
     std::true_type {};
-template<typename Array, size_t ViewDepth>
-struct is_array_object_impl<rep_array_view<Array, ViewDepth>> :
+template<typename Array, size_t ViewDepth, bool StoreRef>
+struct is_array_object_impl<rep_array_view<Array, ViewDepth, StoreRef>> :
     std::true_type {};
 template<typename Array>
 struct is_array_object :
@@ -592,8 +592,8 @@ struct array_obj_type_of_impl<repeated_view<T, Depth>>
 {
     static constexpr array_obj_type value = array_obj_type::repeated;
 };
-template<typename Array, size_t ViewDepth>
-struct array_obj_type_of_impl<rep_array_view<Array, ViewDepth>>
+template<typename Array, size_t ViewDepth, bool StoreRef>
+struct array_obj_type_of_impl<rep_array_view<Array, ViewDepth, StoreRef>>
 {
     static constexpr array_obj_type value = array_obj_type::rep_array;
 };
